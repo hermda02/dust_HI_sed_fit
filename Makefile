@@ -7,7 +7,7 @@ FITSDIR = -L/usr/lib -lcfitsio
 LAPACK  = -L/usr/lib -llapack -lblas
 HEALPIX = -L/usr/local/src/Healpix_3.50/lib -lhealpix
 HEALINC = -I/usr/local/src/Healpix_3.50/include
-OUTPUT  = dust_hi_fit
+OUTPUT  = fit_dust_hi
 
 OBJS    = dust_hi_fit.o
 
