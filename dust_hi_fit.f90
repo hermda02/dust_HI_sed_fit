@@ -36,6 +36,10 @@ program dust_hi_fit
   !                                                                                                     |  
   !-----------------------------------------------------------------------------------------------------|  
 
+10 format (I1)
+11 format (I2)
+12 format (I3)
+  
   if (iargc() < 3) then
      write(*,*) 'Usage:'
      write(*,*) '   dust_hi_fit [temp estimate (full sky)] [std of temperature (for fitting)] [# of iterations]'
@@ -63,21 +67,11 @@ program dust_hi_fit
   i     = getsize_fits(mapHI,nside=nside,ordering=ordering,nmaps=nmaps)
   npix  = nside2npix(nside)
 
-  allocate(masked_353(0:npix-1,nmaps))
-  allocate(masked_545(0:npix-1,nmaps))
-  allocate(masked_857(0:npix-1,nmaps))
-  allocate(masked_240(0:npix-1,nmaps))
-  allocate(masked_100(0:npix-1,nmaps)) 
-  allocate(masked_HI(0:npix-1,nmaps))
-
-  allocate(dummy_353(0:npix-1,nmaps))
-  allocate(dummy_545(0:npix-1,nmaps))
-  allocate(dummy_857(0:npix-1,nmaps))
-  allocate(dummy_240(0:npix-1,nmaps))
-  allocate(dummy_100(0:npix-1,nmaps)) 
-
+  allocate(masked_353(0:npix-1,nmaps),masked_545(0:npix-1,nmaps),masked_857(0:npix-1,nmaps))
+  allocate(masked_240(0:npix-1,nmaps),masked_100(0:npix-1,nmaps),masked_HI(0:npix-1,nmaps))
+  allocate(dummy_353(0:npix-1,nmaps),dummy_545(0:npix-1,nmaps),dummy_857(0:npix-1,nmaps))
+  allocate(dummy_240(0:npix-1,nmaps),dummy_100(0:npix-1,nmaps))
   allocate(new_T(0:npix-1),HI_temp(0:npix-1,nmaps),HI_mask(0:npix-1,nmaps),T_map(0:npix-1,nmaps))
-
   allocate(sum1(5),sum2(5),amps(5),y(5),freq(5),dummy_T(0:npix-1))
 
   pics = 0
@@ -98,7 +92,8 @@ program dust_hi_fit
   call read_bintab(map3, masked_857, npix, nmaps, nullval, anynull, header=header)
   call read_bintab(map4, masked_240, npix, nmaps, nullval, anynull, header=header)
   call read_bintab(map5, masked_100, npix, nmaps, nullval, anynull, header=header)
-  
+
+  ! Initialize header for writing maps
   nlheader = size(header)
   do i=1,nlheader
      line  = header(i)
@@ -110,7 +105,6 @@ program dust_hi_fit
            call add_card(line2, "ORDERING","NESTED", "Pixel ordering scheme, either RING or NESTED")
         end if
      end if
-
      if (line(1:5) == 'NSIDE') then
         call add_card(line2,"NSIDE", nside, "Resolution parameter for HEALPIX")
      end if
@@ -122,13 +116,12 @@ program dust_hi_fit
      if (trim(line2(1)) /= '') header(i) = line2(1)
   end do
 
+  ! Initialize dust temperature map
   do i=0,npix-1
      new_T(i) = dust_T_init
   end do
 
-10 format (I1)
-11 format (I2)
-
+  ! Mask maps
   do j = 1, nmaps
     do i = 0, npix-1
       if (HI_mask(i,j) < 0.5d0) then
@@ -163,45 +156,48 @@ program dust_hi_fit
 
   do m=1,times
 
-    write(*,*) 'Iteration: ', m
-    if (m .lt. 10) then
-      write(number,10) m
-    else
-      write(number,11) m
-    endif
+     write(*,*) 'Iteration: ', m
+     
+     if (m .lt. 10) then
+       write(number,10) m
+     else if (m .gt. 9 .and. m .lt. 100) then
+       write(number,11) m
+     else if (m .gt. 99) then
+       write(number,12) m
+     endif
 
-    filename   = 'amplitudes_' // trim(number) // '.dat'
-    fitsname   = 'dust_Td_' // trim(number) // '.fits'
+     filename   = 'amplitudes_' // trim(number) // '.dat'
+     fitsname   = 'dust_Td_' // trim(number) // '.fits'
 
-    dummy_T    = create_T(new_T,npix)
-    amps       = sample_A(new_T,npix)
+     dummy_T    = create_T(new_T,npix)
+     amps       = sample_A(new_T,npix)
 
-    new_T      = dummy_T
+     new_T      = dummy_T
 
-    do n=0,npix-1
-       if (new_T(n) .gt. 10.d0 .and. new_T(n) .lt. 30.d0 ) then
-          T_map(n,1) = new_T(n)
-       else
-          T_map(n,1) = missval
-       end if
-    end do
+     do n=0,npix-1
+        if (new_T(n) .gt. 10.d0 .and. new_T(n) .lt. 30.d0 ) then
+           T_map(n,1) = new_T(n)
+        else
+           T_map(n,1) = missval
+        end if
+     end do
 
-    open(35,file=trim(filename))
+     open(35,file=trim(filename))
 
-    do n=1,5
-      write(*,*) amps(n)
-      write(35, '(F20.8)') amps(n)
-    end do
+     do n=1,5
+       write(*,*) amps(n)
+       write(35, '(F20.8)') amps(n)
+     end do
 
-    write(*,*) '---------------'
+     write(*,*) '---------------'
 
-    call write_bintab(T_map, npix, nmaps, header, nlheader, trim(fitsname))
-    close(35)
+     call write_bintab(T_map, npix, nmaps, header, nlheader, trim(fitsname))
+     close(35)
 
-  end do
+   end do
 
-  deallocate(masked_353,masked_545,masked_857,masked_100,masked_240,masked_HI)
-  deallocate(dummy_353,dummy_545,dummy_857,dummy_240,dummy_100)
+   deallocate(masked_353,masked_545,masked_857,masked_100,masked_240,masked_HI)
+   deallocate(dummy_353,dummy_545,dummy_857,dummy_240,dummy_100)
   
 
 contains
@@ -216,13 +212,13 @@ contains
         real(dp)              :: planck
         ! Output in units of [W sr^-1 m^-2 Hz^-1]
         planck  = ((2.d0*h*fre**3.d0)/(c**2.d0))*(1.d0/(exp((h*fre)/(k*T))-1))
-	end function planck
+  end function planck
 
 
   function rand_normal(mean,stdev) result(c)
        double precision :: mean,stdev,c,temp(2),theta,r
        if (stdev <= 0.0d0) then
-          write(*,*) "Standard Deviation must be +ve"
+          write(*,*) "Standard Deviation must be positive."
        else
           call RANDOM_NUMBER(temp)
           r=(-2.0d0*log(temp(1)))**0.5
@@ -241,7 +237,6 @@ contains
 
      sum1 = 0.d0
      sum2 = 0.d0
-
 
      ! Calculated using chi^2 minimization for a single variable across all pixels:
      !
@@ -300,13 +295,14 @@ contains
     real(dp), dimension(5), intent(in)    :: amp
     real(dp), intent(in)                  :: T
     real(dp), intent(in)                  :: mu
+    real(dp), dimension(2)                :: a
+    real(dp), dimension(5)                :: test
     real(dp)                              :: sample_T
     real(dp)                              :: temp
     real(dp)                              :: r
     real(dp)                              :: p
-    real(dp), dimension(2)                :: a
+    real(dp)                              :: b
     real(dp)                              :: num
-    real(dp), dimension(5)                :: test
 
     temp = T
     a(1) = 1.d0
@@ -319,24 +315,13 @@ contains
         test(j) = amp(j)*z*planck(freq(j)*1.d9,r)
       end do
 
-      write(*,*) y(1)
-      write(*,*) z*planck(freq(1)*1.d9,r)
-      write(*,*) y(2)
-      write(*,*) z*planck(freq(2)*1.d9,r)
-      write(*,*) y(3)
-      write(*,*) z*planck(freq(3)*1.d9,r)
-      write(*,*) y(4)
-      write(*,*) z*planck(freq(4)*1.d9,r)
-      write(*,*) y(5)
-      write(*,*) z*planck(freq(5)*1.d9,r)
-      stop
-      
-      a(2) = x/sum((abs(test-y)/y)) 
+      b    = sum((abs(test-y)/y))
+      a(2) = b/x
       p    = minval(a)
-
+      
       call RANDOM_NUMBER(num)
 
-      if (num < p) then
+      if (num > p) then
         if (r .gt. 10.d0 .and. r .lt. 30.d0 ) then
           temp = r
         end if
@@ -368,8 +353,11 @@ contains
         y(4) = masked_240(l,1)
         y(5) = masked_100(l,1)
         z    = masked_HI(l,1)
-        x    = (abs(dummy_353(l,1) - y(1))/y(1) + abs(dummy_545(l,1) - y(2))/y(2) + abs(dummy_857(l,1) - y(3))/y(3) + &
-                abs(dummy_240(l,1) - y(4))/y(4) + abs(dummy_100(l,1) - y(5))/y(5))   
+        x    = (abs(amps(1)*dummy_353(l,1) - y(1))/y(1) + &
+                abs(amps(2)*dummy_545(l,1) - y(2))/y(2) + &
+                abs(amps(3)*dummy_857(l,1) - y(3))/y(3) + &
+                abs(amps(4)*dummy_240(l,1) - y(4))/y(4) + &
+                abs(amps(5)*dummy_100(l,1) - y(5))/y(5))   
 
         create_T(l) = sample_T(x,y,z,T(l),dust_T_sigma,amps)
       endif
