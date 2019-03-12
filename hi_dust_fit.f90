@@ -6,13 +6,13 @@ program dust_hi_fit
   implicit none
 
   integer(i4b)        :: i, j, l, m, n, niter, npix, nside, nlheader, nmaps, ordering, pics, times, bands
-  real(dp)            :: nullval, h, c, k, T, temp, fre, x, z, p, test
+  real(dp)            :: nullval, h, c, k, T, temp, fre, x, z, p, test,T_sum
   real(dp)            :: dust_T_init, dust_T_sigma
   real(dp)            :: missval = -1.6375d30
   logical(lgt)        :: anynull
   logical(lgt)        :: double_precision  
 
-  character(len=128)              :: data, map1, map2, map3, map4, map5, mapHI, mask, output
+  character(len=128)              :: data, map1, map2, map3, map4, map5, map6, mapHI, mask, output
   character(len=128)              :: arg1, arg2, arg3, fitsname, filename, file1, file2
   character(len=80)               :: line
   character(len=80), dimension(1) :: line2
@@ -22,7 +22,7 @@ program dust_hi_fit
   real(dp), allocatable, dimension(:,:,:)    :: masked, dummy
   real(dp), allocatable, dimension(:)        :: sum1, sum2, amps, y, freq, dummy_T, new_T
   character(len=80),  dimension(180)         :: header
-  character(len=3),allocatable, dimension(:) :: freqs
+  character(len=8),allocatable, dimension(:) :: freqs
 
 
   !------------------------------------------------------------------------------------------------------
@@ -55,13 +55,14 @@ program dust_hi_fit
   read(arg3,*) times
 
   data  = '../dust_data/sed_data/'
-  output= 'results/'
+  output= 'results/5bands/'
 
-  map1  = trim(data) // 'npipe6v20_353-5_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
-  map2  = trim(data) // 'npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
-  map3  = trim(data) // 'npipe6v20_857-1_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
-  map4  = trim(data) // 'DIRBE_240micron_1deg_h064_v2.fits'
-  map5  = trim(data) // 'DIRBE_100micron_Nside064_60a.fits'
+  map1  = trim(data) // 'npipe6v20_353-5_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
+  map2  = trim(data) // 'npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
+  map3  = trim(data) // 'npipe6v20_857-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
+  map4  = trim(data) // 'DIRBE_240micron_1deg_h064_calibrated.fits'
+  ! map5  = trim(data) // 'DIRBE_140micron_1deg_h064_calibrated.fits'
+  map5  = trim(data) // 'DIRBE_100micron_1deg_h064_calibrated.fits'
   mapHI = trim(data) // 'HI_vel_filter_60arcmin_0064.fits'
   mask  = trim(data) // 'HI_mask.fits'
 
@@ -73,21 +74,21 @@ program dust_hi_fit
   allocate(new_T(0:npix-1),HI_temp(0:npix-1,nmaps),HI_mask(0:npix-1,nmaps),T_map(0:npix-1,nmaps))
   allocate(sum1(bands),sum2(bands),amps(bands),y(bands),freq(bands),freqs(bands),dummy_T(0:npix-1))
 
-  pics = 0
-
   niter = 1000
 
   freq(1) = 353.d0
   freq(2) = 545.d0
   freq(3) = 857.d0
-  freq(4) = 1240.d0
+  freq(4) = 1249.d0
+  ! freq(5) = 2141.d0
   freq(5) = 2998.d0
 
-  freqs(1) = '353'
-  freqs(2) = '545'
-  freqs(3) = '857'
-  freqs(4) = '240'
-  freqs(5) = '100'
+  freqs(1) = '353_GHz'
+  freqs(2) = '545_GHz'
+  freqs(3) = '857_GHz'
+  freqs(4) = '1249_GHz'
+  ! freqs(5) = '2141_GHz'
+  freqs(5) = '2998_GHz'
 
   call read_bintab(mapHI, masked_HI, npix, nmaps, nullval, anynull, header=header)
   call read_bintab(mask, HI_mask, npix, nmaps, nullval, anynull, header=header)
@@ -97,6 +98,7 @@ program dust_hi_fit
   call read_bintab(map3, masked(:,:,3), npix, nmaps, nullval, anynull, header=header)
   call read_bintab(map4, masked(:,:,4), npix, nmaps, nullval, anynull, header=header)
   call read_bintab(map5, masked(:,:,5), npix, nmaps, nullval, anynull, header=header)
+  ! call read_bintab(map6, masked(:,:,6), npix, nmaps, nullval, anynull, header=header)
 
   ! Initialize header for writing maps
   nlheader = size(header)
@@ -153,7 +155,7 @@ program dust_hi_fit
   amps  = sample_A(new_T,npix)
 
   do n=1,bands
-    write(*,*) amps(n)
+    write(*,*) freqs(n) // ': ', amps(n)
   end do
 
   write(*,*) '---------------'
@@ -176,10 +178,25 @@ program dust_hi_fit
      end do
 
      do n=1,bands
-        write(*,*) amps(n)
+        write(*,*) freqs(n) // ': ', amps(n)
      end do
 
-     if ( mod(m,10) .EQ. 0) then
+     pics  = 0
+     T_sum = 0.d0
+
+     do i=0,npix-1
+        if (abs((T_map(i,1)-missval)/missval)< 1.d-8) then
+           cycle
+        else
+           T_sum = T_sum + T_map(i,1) 
+           pics  = pics + 1
+        endif
+     end do
+
+     write(*,*) 'T = ', T_sum/pics
+     
+
+     if ( mod(m,100) .EQ. 0) then
         if (m .lt. 10) then
            write(number,10) m
         else if (m .gt. 9 .and. m .lt. 100) then
@@ -306,7 +323,7 @@ contains
         test(j) = amp(j)*z*planck(freq(j)*1.d9,r)
       end do
 
-      b    = sum((abs(test-y)/y))
+      b    = sum(abs(test-y))
       a(2) = b/x
       p    = minval(a)
 
@@ -342,7 +359,7 @@ contains
              y(j) = masked(l,1,j)
           end do
         z    = masked_HI(l,1)
-        x    = sum(abs(amps(:)*dummy(l,1,:) - y(:))/y(:))
+        x    = sum(abs(amps(:)*dummy(l,1,:) - y(:)))
         create_T(l) = sample_T(x,y,z,T(l),dust_T_sigma,amps)
       endif
     end do
@@ -356,7 +373,7 @@ contains
     character(len=80)                               :: file1, file2, file3
     real(dp), dimension(0:npix-1,nmaps,bands)           :: model, resid
 
-    file1 = 'dust_Td_' // trim(number) // '.fits'
+    file1 = trim(output) // 'dust_Td_' // trim(number) // '.fits'
 
     do y=0,npix-1
        model(y,1,:) = amps(1)*dummy(y,1,:)
