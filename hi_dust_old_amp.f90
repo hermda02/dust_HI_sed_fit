@@ -20,7 +20,7 @@ program dust_hi_fit
 
   real(dp), allocatable, dimension(:,:)      :: HI_temp, HI_mask, masked_HI, T_map
   real(dp), allocatable, dimension(:,:,:)    :: masked, dummy
-  real(dp), allocatable, dimension(:)        :: sum1, sum2, amps, clamps, y, freq, dummy_T, new_T
+  real(dp), allocatable, dimension(:)        :: sum1, sum2, amps, y, freq, dummy_T, new_T
   character(len=80),  dimension(180)         :: header
   character(len=8),allocatable, dimension(:) :: freqs
 
@@ -72,11 +72,7 @@ program dust_hi_fit
 
   allocate(masked(0:npix-1,nmaps,bands),dummy(0:npix-1,nmaps,bands),masked_HI(0:npix-1,nmaps))
   allocate(new_T(0:npix-1),HI_temp(0:npix-1,nmaps),HI_mask(0:npix-1,nmaps),T_map(0:npix-1,nmaps))
-<<<<<<< HEAD
-  allocate(sum1(bands),sum2(bands),amps(bands),clamps(bands),y(bands),freq(bands),freqs(bands),dummy_T(0:npix-1))
-=======
   allocate(sum1(bands),sum2(bands),amps(bands),y(bands),freq(bands),freqs(bands),dummy_T(0:npix-1))
->>>>>>> 79a632bdab12126e8e01373ccf90a53cc7637cdf
 
   niter = 1000
 
@@ -153,72 +149,32 @@ program dust_hi_fit
   ! emissivity cross section per dust grain per NHI, in units of [cm^2].
   !-----------------------------------------------------------------------------------------------------|  
 
-  sum1 = 0.d0
-  sum2 = 0.d0
 
   write(*,*) 'Initial amplitudes: '
-  write(*,*) '-------------------'
   
-  do i=0,npix-1
-    if (abs((new_T(i)-missval)/missval) < 1.d-8 .or. abs((masked_HI(i,1)-missval)/missval) < 1.d-8) then
-       cycle
-    else
-       do j=1,bands
-          dummy(i,1,j)  = masked_HI(i,1)*planck(freq(j)*1.d9,new_T(i))
-          sum1(j) = sum1(j) + (masked(i,1,j)*dummy(i,1,j))
-          sum2(j) = sum2(j) + (dummy(i,1,j)**2.d0)
-       end do
-    endif
-  end do
-
-  do j=1,bands
-    amps(j) = sum1(j)/sum2(j)
-  end do
-
-  clamps = amps
+  amps  = sample_A(new_T,npix)
 
   do n=1,bands
     write(*,*) freqs(n) // ': ', amps(n)
   end do
 
-  write(*,*) '-------------------------------------'
-  write(*,*) ''
+  write(*,*) '---------------'
 
   do m=1,times
 
-    write(*,*) 'Iteration', m
-    write(*,*) '-----------------------'
+     write(*,*) 'Iteration: ', m
 
-    ! Here is where all of the calculations happen
-    ! --------------------------------------------------
+     dummy_T    = create_T(new_T,npix)
+     amps       = sample_A(new_T,npix)
 
-    dummy_T    = create_T(new_T,npix)
-    amps       = sample_A(new_T,npix,clamps,abs(0.1d0*clamps))
+     new_T      = dummy_T
 
-    new_T      = dummy_T
-    clamps     = amps
-
-    ! --------------------------------------------------
-
-    do n=0,npix-1
+     do n=0,npix-1
         if (new_T(n) .gt. 10.d0 .and. new_T(n) .lt. 30.d0 ) then
            T_map(n,1) = new_T(n)
         else
            T_map(n,1) = missval
         end if
-<<<<<<< HEAD
-    end do
-
-    write(*,*) 'Amplitudes: '
-    do n=1,bands
-      write(*,*) freqs(n) // ': ', amps(n)
-    end do
-
-    pics  = 0
-    T_sum = 0.d0
-
-    do i=0,npix-1
-=======
      end do
 
      do n=1,bands
@@ -229,14 +185,11 @@ program dust_hi_fit
      T_sum = 0.d0
 
      do i=0,npix-1
->>>>>>> 79a632bdab12126e8e01373ccf90a53cc7637cdf
         if (abs((T_map(i,1)-missval)/missval)< 1.d-8) then
            cycle
         else
            T_sum = T_sum + T_map(i,1) 
            pics  = pics + 1
-<<<<<<< HEAD
-=======
         endif
      end do
 
@@ -250,37 +203,22 @@ program dust_hi_fit
            write(number,11) m
         else if (m .gt. 99) then
            write(number,12) m
->>>>>>> 79a632bdab12126e8e01373ccf90a53cc7637cdf
         endif
-    end do
 
-    write(*,*) 'T = ', T_sum/pics
-     
+        filename   = trim(output) // 'amplitudes_' // trim(number) // '.dat'
+        fitsname   = trim(output) // 'dust_Td_' // trim(number) // '.fits'
+        open(35,file=trim(filename))
 
-    if ( mod(m,100) .EQ. 0) then
-      if (m .lt. 10) then
-        write(number,10) m
-      else if (m .gt. 9 .and. m .lt. 100) then
-        write(number,11) m
-      else if (m .gt. 99) then
-        write(number,12) m
-      endif
+        do n=1,bands
+           write(35, '(F20.8)') amps(n)
+        end do
+        call write_maps(npix,nmaps,header)
+        close(35)
+     end if
 
-      filename   = trim(output) // 'amplitudes_' // trim(number) // '.dat'
-      fitsname   = trim(output) // 'dust_Td_' // trim(number) // '.fits'
-      open(35,file=trim(filename))
+     write(*,*) '---------------'
 
-      do n=1,bands
-        write(35, '(F20.8)') amps(n)
-      end do
-      call write_maps(npix,nmaps,header)
-      close(35)
-    end if
-
-    write(*,*) '-------------------------------------'
-    write(*,*) ''
-
-  end do
+   end do
 
    deallocate(masked,masked_HI)
    deallocate(dummy)
@@ -314,79 +252,45 @@ contains
   end function
 
 
-  function sample_A(T,npix,amp,mu)
-    implicit none
+  function sample_A(T,npix,amp)
+     implicit none
 
-    integer(i4b), intent(in)                  :: npix
-    real(dp), dimension(0:npix-1), intent(in) :: T
-    real(dp), dimension(bands), intent(in)    :: amp, mu
-    real(dp), dimension(bands)                :: chisq1, sample_A, tau, r
-    real(dp), dimension(2)                    :: a
-    real(dp)                                  :: chisq2, p, num
-    integer(i4b)                              :: b
+     integer(i4b), intent(in)                     :: npix
+     real(dp), dimension(0:npix-1), intent(in)    :: T
+     real(dp), dimension(bands)                   :: sample_A
 
-    tau  = amp
-    a(1) = 1.d0
+     sum1 = 0.d0
+     sum2 = 0.d0
 
-    chisq1 = 0.d0
-    chisq2 = 0.d0
-
-    b = 0
-
-    if (b .EQ. 0) then
-      do i=0,npix-1
+     ! Calculated using chi^2 minimization for a single variable across all pixels:
+     !
+     ! chi^2 = sum((y_i - model_i)^2/sigma^2) =  sum( (data - amp*NHI*B_nu)^2/sigma)
+     !       = sum( data^2 - 2*amp*NHI*B_nu*data + (amp*NHI*B_nu)^2)/sigma^2
+     !
+     ! Minimize:
+     !
+     ! d(chi^2)/d(amp) = sum(-2*NHI*B_nu*data + 2*amp*NHI^2*B_nu^2)/simga^2 = 0
+     !
+     ! amp = sum(NHI*B_nu*data / NHI^2*B_nu*2)
+     !
+     ! Summed over all pixels and all frequencies.
+     
+     do i=0,npix-1
         if (abs((T(i)-missval)/missval) < 1.d-8 .or. abs((masked_HI(i,1)-missval)/missval) < 1.d-8) then
-          cycle
+           cycle
         else
-          do j=1,bands
-            dummy(i,1,j) = masked_HI(i,1)*planck(freq(j)*1.d9,T(i))
-            chisq1(j)    = chisq1(j) + (masked(i,1,j) - tau(j)*dummy(i,1,j))**2.d0
-          end do
+           do j=1,bands
+              dummy(i,1,j)  = masked_HI(i,1)*planck(freq(j)*1.d9,T(i))
+              sum1(j) = sum1(j) + (masked(i,1,j)*dummy(i,1,j))
+              sum2(j) = sum2(j) + (dummy(i,1,j)**2.d0)
+           end do
         endif
-      end do
-      b = b + 1
-    end if
+     end do
 
-    write(*,*) 'Chi-square values :'
-    do j=1,bands
-      write(*,*) freqs(j) // ': ', chisq1(j)
-    end do
-    write(*,*) ''
-
-    do j=1,bands
-      do i=1,niter
-        chisq2 = 0.d0
-        r(j) = rand_normal(tau(j),mu(j))
-        do n=0,npix-1
-          if (abs((T(n)-missval)/missval) < 1.d-8 .or. abs((masked_HI(n,1)-missval)/missval) < 1.d-8) then
-            cycle
-          else
-            dummy(n,1,j)  = masked_HI(n,1)*planck(freq(j)*1.d9,T(n))
-            chisq2 = chisq2 + (masked(n,1,j) - r(j)*dummy(n,1,j))**2.d0
-          end if
-        end do
-
-        ! write(*,*) chisq2
-
-        a(2) = chisq2/chisq1(j)
-        p    = minval(a)
-
-        ! write(*,*) p
-   
-        call RANDOM_NUMBER(num)
-        if (num > p) then
-          do n=1,bands
-            if (r(n) .gt. 0.d0) then
-              tau(n) = r(n)
-            end if
-          chisq1 = chisq2
-          end do
-        end if
-      end do
-    end do
-
-    sample_A = tau
-
+     ! Amplitude in units of [cm^2]
+     do j=1,bands
+        sample_A(j) = sum1(j)/sum2(j)
+     end do
   end function sample_A
 
 
@@ -401,7 +305,13 @@ contains
     real(dp), intent(in)                   :: mu
     real(dp), dimension(2)                 :: a
     real(dp), dimension(bands)             :: test
-    real(dp)                               :: sample_T, temp, r, p, b, c, num
+    real(dp)                               :: sample_T
+    real(dp)                               :: temp
+    real(dp)                               :: r
+    real(dp)                               :: p
+    real(dp)                               :: b
+    real(dp)                               :: c
+    real(dp)                               :: num
 
     temp = T
     a(1) = 1.d0
@@ -416,11 +326,7 @@ contains
       end do
 
       b    = sum(abs(test-y))
-<<<<<<< HEAD
       a(2) = b/c
-=======
-      a(2) = b/x
->>>>>>> 79a632bdab12126e8e01373ccf90a53cc7637cdf
       p    = minval(a)
 
       call RANDOM_NUMBER(num)
