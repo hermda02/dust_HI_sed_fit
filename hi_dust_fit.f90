@@ -54,16 +54,16 @@ program dust_hi_fit
   call getarg(3,arg3)
   read(arg3,*) times
 
-  data  = '../dust_data/'
+  data  = '../dust_data/sed_data/'
   output= 'results/'
 
-  map1  = '../dust_data/sed_data/npipe6v20_353-5_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
-  map2  = '../dust_data/sed_data/npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
-  map3  = '../dust_data/sed_data/npipe6v20_857-1_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
-  map4  = '../dust_data/sed_data/DIRBE_240micron_1deg_h064_v2.fits'
-  map5  = '../dust_data/sed_data/DIRBE_100micron_Nside064_60a.fits'
-  mapHI = '../dust_data/HI_vel_filter_60arcmin_0064.fits'
-  mask  = '../dust_data/sed_data/HI_mask.fits'
+  map1  = trim(data) // 'npipe6v20_353-5_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
+  map2  = trim(data) // 'npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
+  map3  = trim(data) // 'npipe6v20_857-1_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
+  map4  = trim(data) // 'DIRBE_240micron_1deg_h064_v2.fits'
+  map5  = trim(data) // 'DIRBE_100micron_Nside064_60a.fits'
+  mapHI = trim(data) // 'HI_vel_filter_60arcmin_0064.fits'
+  mask  = trim(data) // 'HI_mask.fits'
 
   i     = getsize_fits(mapHI,nside=nside,ordering=ordering,nmaps=nmaps)
   npix  = nside2npix(nside)
