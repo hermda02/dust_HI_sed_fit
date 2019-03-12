@@ -9,7 +9,7 @@ HEALPIX = -L/usr/local/src/Healpix_3.50/lib -lhealpix
 HEALINC = -I/usr/local/src/Healpix_3.50/include
 OUTPUT  = fit_dust_hi
 
-OBJS    = dust_hi_fit.o
+OBJS    = hi_dust_fit.o
 
 dust_hi_fit: $(OBJS)
 	$(FC) $(OBJS) $(HEALPIX) $(FITSDIR) -fopenmp -o $(OUTPUT)
@@ -21,4 +21,4 @@ dust_hi_fit: $(OBJS)
 # Cleaning command
 .PHONY: clean
 clean:
-	rm *.o *~ dust_hi_fit
+	rm *.o *~ fit_dust_hi

@@ -12,7 +12,7 @@ program dust_hi_fit
   logical(lgt)        :: anynull
   logical(lgt)        :: double_precision  
 
-  character(len=128)              :: data, map1, map2, map3, map4, map5, mapHI, mask
+  character(len=128)              :: data, map1, map2, map3, map4, map5, mapHI, mask, output
   character(len=128)              :: arg1, arg2, arg3, fitsname, filename, file1, file2
   character(len=80)               :: line
   character(len=80), dimension(1) :: line2
@@ -55,14 +55,15 @@ program dust_hi_fit
   read(arg3,*) times
 
   data  = '../dust_data/'
+  output= 'results/'
 
-  map1  = '../dust_hi_data/sed_data/npipe6v20_353-5_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
-  map2  = '../dust_hi_data/sed_data/npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
-  map3  = '../dust_hi_data/sed_data/npipe6v20_857-1_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
-  map4  = '../dust_hi_data/sed_data/DIRBE_240micron_1deg_h064_v2.fits'
-  map5  = '../dust_hi_data/sed_data/DIRBE_100micron_Nside064_60a.fits'
-  mapHI = '../dust_hi_data/HI_vel_filter_60arcmin_0064.fits'
-  mask  = '../dust_hi_data/sed_data/HI_mask.fits'
+  map1  = '../dust_data/sed_data/npipe6v20_353-5_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
+  map2  = '../dust_data/sed_data/npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
+  map3  = '../dust_data/sed_data/npipe6v20_857-1_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
+  map4  = '../dust_data/sed_data/DIRBE_240micron_1deg_h064_v2.fits'
+  map5  = '../dust_data/sed_data/DIRBE_100micron_Nside064_60a.fits'
+  mapHI = '../dust_data/HI_vel_filter_60arcmin_0064.fits'
+  mask  = '../dust_data/sed_data/HI_mask.fits'
 
   i     = getsize_fits(mapHI,nside=nside,ordering=ordering,nmaps=nmaps)
   npix  = nside2npix(nside)
@@ -187,8 +188,8 @@ program dust_hi_fit
            write(number,12) m
         endif
 
-        filename   = 'amplitudes_' // trim(number) // '.dat'
-        fitsname   = 'dust_Td_' // trim(number) // '.fits'
+        filename   = trim(output) // 'amplitudes_' // trim(number) // '.dat'
+        fitsname   = trim(output) // 'dust_Td_' // trim(number) // '.fits'
         open(35,file=trim(filename))
 
         do n=1,bands
@@ -364,8 +365,8 @@ contains
 
     call write_bintab(T_map, npix, nmaps, header, nlheader, file1)
     do y=1,bands
-       file2 = 'model_'// trim(freqs(y)) // '_' // trim(number) // '.fits'
-       file3 = 'resid_'// trim(freqs(y)) // '_' // trim(number) // '.fits'
+       file2 = trim(output) // 'model_'// trim(freqs(y)) // '_' // trim(number) // '.fits'
+       file3 = trim(output) // 'resid_'// trim(freqs(y)) // '_' // trim(number) // '.fits'
        call write_bintab(model(:,:,y), npix, nmaps, header, nlheader, file2)
        call write_bintab(resid(:,:,y), npix, nmaps, header, nlheader, file3)
     end do
