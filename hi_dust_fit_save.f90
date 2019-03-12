@@ -5,7 +5,7 @@ program dust_hi_fit
   use head_fits
   implicit none
 
-  integer(i4b)        :: i, j, l, m, n, niter, npix, nside, nlheader, nmaps, ordering, pics, times
+  integer(i4b)        :: i, j, l, m, n, niter, npix, nside, nlheader, nmaps, ordering, pics, times, bands
   real(dp)            :: nullval, h, c, k, T, temp, fre, x, z, p, test
   real(dp)            :: dust_T_init, dust_T_sigma, dummy
   real(dp)            :: missval = -1.6375d30
@@ -13,10 +13,10 @@ program dust_hi_fit
   logical(lgt)        :: double_precision  
 
   character(len=128)              :: data, map1, map2, map3, map4, map5, mapHI, mask
-  character(len=128)              :: arg1, arg2, arg3, fitsname, filename
+  character(len=128)              :: arg1, arg2, arg3, fitsname, filename, file1, file2
   character(len=80)               :: line
   character(len=80), dimension(1) :: line2
-  character(len=2)                :: number
+  character(len=3)                :: number
 
   real(dp), allocatable, dimension(:,:)  :: HI_temp, HI_mask, masked_HI, T_map
   real(dp), allocatable, dimension(:,:)  :: masked_353, masked_545, masked_857, masked_240, masked_100
@@ -56,23 +56,24 @@ program dust_hi_fit
 
   data  = '../dust_data/'
 
-  map1  = '../dust_data/npipe6v20_353-5_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
-  map2  = '../dust_data/npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
-  map3  = '../dust_data/npipe6v20_857-1_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
-  map4  = '../dust_data/DIRBE_240micron_1deg_h064_v2.fits'
-  map5  = '../dust_data/DIRBE_100micron_Nside064_60a.fits'
-  mapHI = '../dust_data/HI_vel_filter_60arcmin_0064.fits'
-  mask  = '../dust_data/HI_mask.fits'
+  map1  = '../dust_hi_data/sed_data/npipe6v20_353-5_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
+  map2  = '../dust_hi_data/sed_data/npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
+  map3  = '../dust_hi_data/sed_data/npipe6v20_857-1_bmap_QUADCOR_n0064_60arcmin_MJy_no_cmb.fits'
+  map4  = '../dust_hi_data/sed_data/DIRBE_240micron_1deg_h064_v2.fits'
+  map5  = '../dust_hi_data/sed_data/DIRBE_100micron_Nside064_60a.fits'
+  mapHI = '../dust_hi_data/HI_vel_filter_60arcmin_0064.fits'
+  mask  = '../dust_hi_data/sed_data/HI_mask.fits'
 
   i     = getsize_fits(mapHI,nside=nside,ordering=ordering,nmaps=nmaps)
   npix  = nside2npix(nside)
+  bands = 5
 
   allocate(masked_353(0:npix-1,nmaps),masked_545(0:npix-1,nmaps),masked_857(0:npix-1,nmaps))
   allocate(masked_240(0:npix-1,nmaps),masked_100(0:npix-1,nmaps),masked_HI(0:npix-1,nmaps))
   allocate(dummy_353(0:npix-1,nmaps),dummy_545(0:npix-1,nmaps),dummy_857(0:npix-1,nmaps))
   allocate(dummy_240(0:npix-1,nmaps),dummy_100(0:npix-1,nmaps))
   allocate(new_T(0:npix-1),HI_temp(0:npix-1,nmaps),HI_mask(0:npix-1,nmaps),T_map(0:npix-1,nmaps))
-  allocate(sum1(5),sum2(5),amps(5),y(5),freq(5),dummy_T(0:npix-1))
+  allocate(sum1(bands),sum2(bands),amps(bands),y(bands),freq(bands),dummy_T(0:npix-1))
 
   pics = 0
 
@@ -136,38 +137,30 @@ program dust_hi_fit
     end do
   end do
 
-
+  !-----------------------------------------------------------------------------------------------------|  
   ! Here we calculate what the amplitude per map, and temperature per pixel should be for the best fit
   !
   ! with data = I_nu = A_nu * NHI * B_nu(T)
   ! Following the physical model:
   !             I_nu = kappa_nu * r * m_p * NHI * B_nu(T)
-  ! So the amplitude we solve for is A_nu = kappa_nu * r * m_p which encapsulates the dust emissivity
-  ! cross section per dust grain per NHI, in units of [cm^2]
+  ! So the amplitude we solve for is A_nu = kappa_nu * r * m_p = tau_nu which encapsulates the dust 
+  ! emissivity cross section per dust grain per NHI, in units of [cm^2].
+  !-----------------------------------------------------------------------------------------------------|  
+
 
   write(*,*) 'Initial amplitudes: '
   
   amps  = sample_A(new_T,npix)
 
-  do n=1,5
+  do n=1,bands
     write(*,*) amps(n)
   end do
+
   write(*,*) '---------------'
 
   do m=1,times
 
      write(*,*) 'Iteration: ', m
-     
-     if (m .lt. 10) then
-       write(number,10) m
-     else if (m .gt. 9 .and. m .lt. 100) then
-       write(number,11) m
-     else if (m .gt. 99) then
-       write(number,12) m
-     endif
-
-     filename   = 'amplitudes_' // trim(number) // '.dat'
-     fitsname   = 'dust_Td_' // trim(number) // '.fits'
 
      dummy_T    = create_T(new_T,npix)
      amps       = sample_A(new_T,npix)
@@ -182,17 +175,31 @@ program dust_hi_fit
         end if
      end do
 
-     open(35,file=trim(filename))
-
-     do n=1,5
-       write(*,*) amps(n)
-       write(35, '(F20.8)') amps(n)
+     do n=1,bands
+        write(*,*) amps(n)
      end do
 
-     write(*,*) '---------------'
+     if ( mod(m,50) .EQ. 0) then
+        if (m .lt. 10) then
+           write(number,10) m
+        else if (m .gt. 9 .and. m .lt. 100) then
+           write(number,11) m
+        else if (m .gt. 99) then
+           write(number,12) m
+        endif
 
-     call write_bintab(T_map, npix, nmaps, header, nlheader, trim(fitsname))
-     close(35)
+        filename   = 'amplitudes_' // trim(number) // '.dat'
+        fitsname   = 'dust_Td_' // trim(number) // '.fits'
+        open(35,file=trim(filename))
+
+        do n=1,bands
+           write(35, '(F20.8)') amps(n)
+        end do
+        call write_maps(npix,nmaps,header)
+        close(35)
+     end if
+
+     write(*,*) '---------------'
 
    end do
 
@@ -233,7 +240,7 @@ contains
 
      integer(i4b), intent(in)                     :: npix
      real(dp), dimension(0:npix-1), intent(in)    :: T
-     real(dp), dimension(5)                       :: sample_A
+     real(dp), dimension(bands)                   :: sample_A
 
      sum1 = 0.d0
      sum2 = 0.d0
@@ -289,20 +296,20 @@ contains
   function sample_T(x,y,z,T,mu,amp)
     implicit none
 
-    real(dp), intent(in)                  :: x
-    real(dp), dimension(5), intent(in)    :: y
-    real(dp), intent(in)                  :: z
-    real(dp), dimension(5), intent(in)    :: amp
-    real(dp), intent(in)                  :: T
-    real(dp), intent(in)                  :: mu
-    real(dp), dimension(2)                :: a
-    real(dp), dimension(5)                :: test
-    real(dp)                              :: sample_T
-    real(dp)                              :: temp
-    real(dp)                              :: r
-    real(dp)                              :: p
-    real(dp)                              :: b
-    real(dp)                              :: num
+    real(dp), intent(in)                   :: x
+    real(dp), dimension(bands), intent(in) :: y
+    real(dp), intent(in)                   :: z
+    real(dp), dimension(bands), intent(in) :: amp
+    real(dp), intent(in)                   :: T
+    real(dp), intent(in)                   :: mu
+    real(dp), dimension(2)                 :: a
+    real(dp), dimension(bands)             :: test
+    real(dp)                               :: sample_T
+    real(dp)                               :: temp
+    real(dp)                               :: r
+    real(dp)                               :: p
+    real(dp)                               :: b
+    real(dp)                               :: num
 
     temp = T
     a(1) = 1.d0
@@ -311,18 +318,18 @@ contains
       r    = rand_normal(temp,mu)
       test = 0.d0
 
-      do j=1,5
+      do j=1,bands
         test(j) = amp(j)*z*planck(freq(j)*1.d9,r)
       end do
 
       b    = sum((abs(test-y)/y))
       a(2) = b/x
       p    = minval(a)
-      
+
       call RANDOM_NUMBER(num)
 
       if (num > p) then
-        if (r .gt. 10.d0 .and. r .lt. 30.d0 ) then
+        if (r .gt. 15.d0 .and. r .lt. 30.d0 ) then
           temp = r
         end if
       end if
@@ -339,7 +346,7 @@ contains
     integer(i4b), intent(in)                     :: npix
     real(dp), dimension(0:npix-1), intent(in)    :: T
     real(dp), dimension(0:npix-1)                :: create_T
-    real(dp), dimension(5)                       :: y
+    real(dp), dimension(bands)                   :: y
     real(dp)                                     :: z
     real(dp)                                     :: x
 
@@ -363,5 +370,55 @@ contains
       endif
     end do
   end function create_T
+
+  subroutine write_maps(npix,nmaps,header)
+    ! Outputs the temperature map, the modeled map, and the residual map
+    integer(i4b), intent(in)                        :: npix, nmaps
+    integer(i4b)                                    :: y, b
+    character(len=80),  dimension(180), intent(in)  :: header
+    character(len=80)                               :: file1, file2, file3
+    real(dp), dimension(0:npix-1,nmaps,bands)       :: model, resid
+
+    file1 = 'dust_Td_' // trim(number) // '.fits'
+
+    do y=0,npix-1
+       model(y,1,1) = amps(1)*dummy_353(y,1)
+       model(y,1,2) = amps(2)*dummy_545(y,1)
+       model(y,1,3) = amps(3)*dummy_857(y,1)
+       model(y,1,4) = amps(4)*dummy_240(y,1)
+       model(y,1,5) = amps(5)*dummy_100(y,1)
+
+       resid(y,1,1) = masked_353(y,1) - model(y,1,1)
+       resid(y,1,2) = masked_545(y,1) - model(y,1,2)
+       resid(y,1,3) = masked_857(y,1) - model(y,1,3)
+       resid(y,1,4) = masked_240(y,1) - model(y,1,4)
+       resid(y,1,5) = masked_100(y,1) - model(y,1,5)
+
+    end do
+
+    call write_bintab(T_map, npix, nmaps, header, nlheader, file1)
+    file2 = 'model_353_' // trim(number) // '.fits'
+    file3 = 'resid_353_' // trim(number) // '.fits'
+    call write_bintab(model(:,:,1), npix, nmaps, header, nlheader, file2)
+    call write_bintab(resid(:,:,1), npix, nmaps, header, nlheader, file3)
+    file2 = 'model_545_' // trim(number) // '.fits'
+    file3 = 'resid_545_' // trim(number) // '.fits'
+    call write_bintab(model(:,:,2), npix, nmaps, header, nlheader, file2)
+    call write_bintab(resid(:,:,2), npix, nmaps, header, nlheader, file3)
+    file2 = 'model_857_' // trim(number) // '.fits'
+    file3 = 'resid_857_' // trim(number) // '.fits'
+    call write_bintab(model(:,:,3), npix, nmaps, header, nlheader, file2)
+    call write_bintab(resid(:,:,3), npix, nmaps, header, nlheader, file3)
+    file2 = 'model_240_' // trim(number) // '.fits'
+    file3 = 'resid_240_' // trim(number) // '.fits'
+    call write_bintab(model(:,:,4), npix, nmaps, header, nlheader, file2)
+    call write_bintab(resid(:,:,4), npix, nmaps, header, nlheader, file3)
+    file2 = 'model_100_' // trim(number) // '.fits'
+    file3 = 'resid_100_' // trim(number) // '.fits'
+    call write_bintab(model(:,:,5), npix, nmaps, header, nlheader, file2)
+    call write_bintab(resid(:,:,5), npix, nmaps, header, nlheader, file3)
+   
+
+  end subroutine write_maps
 
 end program dust_hi_fit
