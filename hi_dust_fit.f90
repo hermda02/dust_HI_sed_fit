@@ -72,12 +72,8 @@ program dust_hi_fit
 
   allocate(masked(0:npix-1,nmaps,bands),dummy(0:npix-1,nmaps,bands),masked_HI(0:npix-1,nmaps))
   allocate(new_T(0:npix-1),HI_temp(0:npix-1,nmaps),HI_mask(0:npix-1,nmaps),T_map(0:npix-1,nmaps))
-<<<<<<< HEAD
   allocate(sum1(bands),sum2(bands),amps(bands),clamps(bands),y(bands),freq(bands),freqs(bands),dummy_T(0:npix-1))
-=======
-  allocate(sum1(bands),sum2(bands),amps(bands),y(bands),freq(bands),freqs(bands),dummy_T(0:npix-1))
->>>>>>> 79a632bdab12126e8e01373ccf90a53cc7637cdf
-
+  
   niter = 1000
 
   freq(1) = 353.d0
@@ -206,7 +202,6 @@ program dust_hi_fit
         else
            T_map(n,1) = missval
         end if
-<<<<<<< HEAD
     end do
 
     write(*,*) 'Amplitudes: '
@@ -218,44 +213,15 @@ program dust_hi_fit
     T_sum = 0.d0
 
     do i=0,npix-1
-=======
-     end do
-
-     do n=1,bands
-        write(*,*) freqs(n) // ': ', amps(n)
-     end do
-
-     pics  = 0
-     T_sum = 0.d0
-
-     do i=0,npix-1
->>>>>>> 79a632bdab12126e8e01373ccf90a53cc7637cdf
-        if (abs((T_map(i,1)-missval)/missval)< 1.d-8) then
-           cycle
-        else
-           T_sum = T_sum + T_map(i,1) 
-           pics  = pics + 1
-<<<<<<< HEAD
-=======
-        endif
-     end do
-
-     write(*,*) 'T = ', T_sum/pics
-     
-
-     if ( mod(m,100) .EQ. 0) then
-        if (m .lt. 10) then
-           write(number,10) m
-        else if (m .gt. 9 .and. m .lt. 100) then
-           write(number,11) m
-        else if (m .gt. 99) then
-           write(number,12) m
->>>>>>> 79a632bdab12126e8e01373ccf90a53cc7637cdf
-        endif
+      if (abs((T_map(i,1)-missval)/missval)< 1.d-8) then
+        cycle
+      else
+        T_sum = T_sum + T_map(i,1) 
+        pics  = pics + 1
+      endif
     end do
 
     write(*,*) 'T = ', T_sum/pics
-     
 
     if ( mod(m,100) .EQ. 0) then
       if (m .lt. 10) then
@@ -366,12 +332,8 @@ contains
           end if
         end do
 
-        ! write(*,*) chisq2
-
         a(2) = chisq2/chisq1(j)
         p    = minval(a)
-
-        ! write(*,*) p
    
         call RANDOM_NUMBER(num)
         if (num > p) then
@@ -416,11 +378,7 @@ contains
       end do
 
       b    = sum(abs(test-y))
-<<<<<<< HEAD
       a(2) = b/c
-=======
-      a(2) = b/x
->>>>>>> 79a632bdab12126e8e01373ccf90a53cc7637cdf
       p    = minval(a)
 
       call RANDOM_NUMBER(num)
