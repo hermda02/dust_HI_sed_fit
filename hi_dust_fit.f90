@@ -174,6 +174,12 @@ program dust_hi_fit
     amps(j) = sum1(j)/sum2(j)
   end do
 
+  amps(1) = 1.0d-7
+  amps(2) = 1.0d-6
+  amps(3) = 1.0d-6
+  amps(4) = 1.0d-5
+  amps(5) = 1.0d-5
+
   clamps = amps
 
   do n=1,bands
@@ -323,7 +329,7 @@ contains
 
 
     do j=1,bands
-       write(*,*) freqs(j) // ':'
+       ! write(*,*) freqs(j) // ':'
        do n=1,niter
           chisq2 = 0.d0
           r(j) = rand_normal(tau(j),std(j))
@@ -393,7 +399,7 @@ contains
        call RANDOM_NUMBER(num)
 
        if (num > p) then
-          if (r .gt. 15.d0 .and. r .lt. 30.d0 ) then
+          if (r .gt. 15.d0 .and. r .lt. 30.d0 .and. abs(temp - r) .gt. 0.001d0) then
              temp = r
              c    = b
           end if
@@ -423,7 +429,7 @@ contains
              y(j) = masked(l,1,j)
           end do
           z    = masked_HI(l,1)
-          x    = sum((amps(:)*dummy(l,1,:) - y(:))**2.d0)
+          x    = sum((clamps(:)*dummy(l,1,:) - y(:))**2.d0)
           create_T(l) = sample_T(x,y,z,T(l),dust_T_sigma,clamps)
        endif
     end do
