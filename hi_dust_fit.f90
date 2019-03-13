@@ -20,7 +20,8 @@ program dust_hi_fit
 
   real(dp), allocatable, dimension(:,:)      :: HI_temp, HI_mask, masked_HI, T_map
   real(dp), allocatable, dimension(:,:,:)    :: masked, dummy
-  real(dp), allocatable, dimension(:)        :: sum1, sum2, amps, clamps, y, freq, dummy_T, new_T, amp_std
+  real(dp), allocatable, dimension(:)        :: amps, clamps, dummy_T, new_T, amp_std
+  real(dp), allocatable, dimension(:)        :: y, freq, sum1, sum2
   character(len=80),  dimension(180)         :: header
   character(len=8),allocatable, dimension(:) :: freqs
 
@@ -29,7 +30,7 @@ program dust_hi_fit
   ! Daniel Herman 2019                                                                                  |
   !                                                                                                     |  
   ! This program will fit a temperature and an amplitude to the intensity of dust from the HI template. |
-  ! We are only looking at high latitudes, where HI column density is < 4e20, because this is where     |
+  ! We are only looking at high latitudes, where HI column density is < 4e20, because this is where the |
   ! dust/gas ratio is appoximately linear.                                                              |
   !                                                                                                     |  
   ! Start by looking at just 353, 545, 857, 240um, and 100um.                                           |
@@ -61,18 +62,19 @@ program dust_hi_fit
   map2  = trim(data) // 'npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
   map3  = trim(data) // 'npipe6v20_857-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
   map4  = trim(data) // 'DIRBE_240micron_1deg_h064_calibrated.fits'
-  !map5  = trim(data) // 'DIRBE_140micron_1deg_h064_calibrated.fits'
-  map5  = trim(data) // 'DIRBE_100micron_1deg_h064_calibrated.fits'
+  map5  = trim(data) // 'DIRBE_140micron_1deg_h064_calibrated.fits'
+  map6  = trim(data) // 'DIRBE_100micron_1deg_h064_calibrated.fits'
   mapHI = trim(data) // 'HI_vel_filter_60arcmin_0064.fits'
   mask  = trim(data) // 'HI_mask.fits'
 
   i     = getsize_fits(mapHI,nside=nside,ordering=ordering,nmaps=nmaps)
   npix  = nside2npix(nside)
-  bands = 5
+  bands = 6
 
   allocate(masked(0:npix-1,nmaps,bands),dummy(0:npix-1,nmaps,bands),masked_HI(0:npix-1,nmaps),dummy_T(0:npix-1))
   allocate(new_T(0:npix-1),HI_temp(0:npix-1,nmaps),HI_mask(0:npix-1,nmaps),T_map(0:npix-1,nmaps))
-  allocate(sum1(bands),sum2(bands),amps(bands),clamps(bands),y(bands),freq(bands),freqs(bands),amp_std(bands))
+  allocate(amps(bands),clamps(bands),freqs(bands),amp_std(bands))
+  allocate(y(bands),freq(bands),sum1(bands),sum2(bands))
   
   niter = 1000
 
@@ -80,15 +82,15 @@ program dust_hi_fit
   freq(2) = 545.d0
   freq(3) = 857.d0
   freq(4) = 1249.d0
-  ! freq(5) = 2141.d0
-  freq(5) = 2998.d0
+  freq(5) = 2141.d0
+  freq(6) = 2998.d0
 
   freqs(1) = '353_GHz'
   freqs(2) = '545_GHz'
   freqs(3) = '857_GHz'
   freqs(4) = '1249_GHz'
-  ! freqs(5) = '2141_GHz'
-  freqs(5) = '2998_GHz'
+  freqs(5) = '2141_GHz'
+  freqs(6) = '2998_GHz'
 
   call read_bintab(mapHI, masked_HI, npix, nmaps, nullval, anynull, header=header)
   call read_bintab(mask, HI_mask, npix, nmaps, nullval, anynull, header=header)
@@ -98,7 +100,8 @@ program dust_hi_fit
   call read_bintab(map3, masked(:,:,3), npix, nmaps, nullval, anynull, header=header)
   call read_bintab(map4, masked(:,:,4), npix, nmaps, nullval, anynull, header=header)
   call read_bintab(map5, masked(:,:,5), npix, nmaps, nullval, anynull, header=header)
-  ! call read_bintab(map6, masked(:,:,6), npix, nmaps, nullval, anynull, header=header)
+  call read_bintab(map6, masked(:,:,6), npix, nmaps, nullval, anynull, header=header)
+
 
   ! Initialize header for writing maps
   nlheader = size(header)
@@ -115,11 +118,9 @@ program dust_hi_fit
      if (line(1:5) == 'NSIDE') then
         call add_card(line2,"NSIDE", nside, "Resolution parameter for HEALPIX")
      end if
-
      if (line(1:7) == 'LASTPIX') then
         call add_card(line2,"LASTPIX",npix-1,"Last pixel # (0 based)")
      end if
-
      if (trim(line2(1)) /= '') header(i) = line2(1)
   end do
 
@@ -148,7 +149,9 @@ program dust_hi_fit
   ! So the amplitude we solve for is A_nu = kappa_nu * r * m_p = tau_nu which encapsulates the dust 
   ! emissivity cross section per dust grain per NHI, in units of [cm^2].
   !-----------------------------------------------------------------------------------------------------|  
-
+  
+  ! Initializing
+  !--------------
   sum1 = 0.d0
   sum2 = 0.d0
 
@@ -180,79 +183,73 @@ program dust_hi_fit
   write(*,*) '-------------------------------------'
   write(*,*) ''
 
+  !------------------------------------------------------------
+  !------------------------------------------------------------
+  filename   = trim(output) // 'amplitudes.dat'
+  open(35,file=trim(filename))
+
   do m=1,times
 
-    write(*,*) 'Iteration', m
-    write(*,*) '-----------------------'
+     write(*,*) 'Iteration', m
+     write(*,*) '-----------------------'
 
-    ! Here is where all of the calculations happen
-    ! --------------------------------------------------
-    do n=1,bands
-       amp_std(n) = abs(0.10d0*clamps(n))
-    end do
+     ! Here is where all of the calculations happen
+     ! --------------------------------------------------
+     do n=1,bands
+        amp_std(n) = abs(0.9d0*clamps(n))
+     end do
 
-    dummy_T    = create_T(new_T,npix)
-    amps       = sample_A(new_T,npix,clamps,amp_std)
+     dummy_T    = create_T(new_T,npix)
+     amps       = sample_A(new_T,npix,clamps,amp_std)
 
-    new_T      = dummy_T
-    clamps     = amps
+     new_T      = dummy_T
+     clamps     = amps
 
-    ! --------------------------------------------------
+     write(*,*) 'Amplitudes: '
+     do n=1,bands
+        write(*,*) freqs(n) // ': ', clamps(n)
+     end do
 
-    do n=0,npix-1
+     ! --------------------------------------------------
+     pics  = 0
+     T_sum = 0.d0
+
+     do n=0,npix-1
         if (new_T(n) .gt. 10.d0 .and. new_T(n) .lt. 30.d0 ) then
            T_map(n,1) = new_T(n)
+           T_sum      = T_sum + T_map(n,1)
+           pics       = pics + 1
         else
            T_map(n,1) = missval
         end if
-    end do
+     end do
 
-    write(*,*) 'Amplitudes: '
-    do n=1,bands
-      write(*,*) freqs(n) // ': ', clamps(n)
-    end do
+     write(*,*) 'T = ', T_sum/pics
 
-    pics  = 0
-    T_sum = 0.d0
+     ! Write result maps
+     if ( mod(m,100) .EQ. 0) then
+        if (m .lt. 10) then
+           write(number,10) m
+        else if (m .gt. 9 .and. m .lt. 100) then
+           write(number,11) m
+        else if (m .gt. 99) then
+           write(number,12) m
+        endif
 
-    do i=0,npix-1
-      if (abs((T_map(i,1)-missval)/missval)< 1.d-8) then
-        cycle
-      else
-        T_sum = T_sum + T_map(i,1) 
-        pics  = pics + 1
-      endif
-    end do
+        fitsname   = trim(output) // 'dust_Td_' // trim(number) // '.fits'
 
-    write(*,*) 'T = ', T_sum/pics
-
-    if ( mod(m,25) .EQ. 0) then
-      if (m .lt. 10) then
-        write(number,10) m
-      else if (m .gt. 9 .and. m .lt. 100) then
-        write(number,11) m
-      else if (m .gt. 99) then
-        write(number,12) m
-      endif
-
-      filename   = trim(output) // 'amplitudes_' // trim(number) // '.dat'
-      fitsname   = trim(output) // 'dust_Td_' // trim(number) // '.fits'
-      open(35,file=trim(filename))
-
-      do n=1,bands
-        write(35, '(F20.8)') amps(n)
-      end do
-      call write_maps(npix,nmaps,header)
-      close(35)
-    end if
-
-    write(*,*) '-------------------------------------'
-    write(*,*) ''
+        call write_maps(npix,nmaps,header)
+     end if
+    
+     write(35,'(6(E17.8))') clamps(1), clamps(2), clamps(3), clamps(4), clamps(5), clamps(6)
+     write(*,*) '-------------------------------------'
+     write(*,*) ''
 
   end do
 
-   deallocate(masked,masked_HI)
-   deallocate(dummy)
+  deallocate(masked,masked_HI)
+  deallocate(dummy)
+  close(35)
   
 
 contains
@@ -283,13 +280,14 @@ contains
   end function
 
 
-  function sample_A(T,npix,amp,mu)
+  function sample_A(T,npix,amp,std)
     implicit none
 
     integer(i4b), intent(in)                  :: npix
     real(dp), dimension(0:npix-1), intent(in) :: T
-    real(dp), dimension(bands), intent(in)    :: amp, mu
-    real(dp), dimension(bands)                :: chisq1, sample_A, tau, r
+    real(dp), dimension(bands), intent(in)    :: amp, std
+    real(dp), dimension(bands)                :: chisq1, sample_A, tau, r, sigma, mu
+    real(dp), dimension(npix,bands)           :: vals
     real(dp), dimension(2)                    :: a
     real(dp)                                  :: chisq2, p, num
     integer(i4b)                              :: b
@@ -301,20 +299,56 @@ contains
     chisq2 = 0.d0
 
     b = 0
-
     if (b .EQ. 0) then
-      do i=0,npix-1
-        if (abs((T(i)-missval)/missval) < 1.d-8 .or. abs((masked_HI(i,1)-missval)/missval) < 1.d-8) then
-          cycle
-        else
-          do j=1,bands
-            dummy(i,1,j) = masked_HI(i,1)*planck(freq(j)*1.d9,T(i))
-            chisq1(j)    = chisq1(j) + (masked(i,1,j) - tau(j)*dummy(i,1,j))**2.d0
-          end do
-        endif
-      end do
-      b = b + 1
+       do i=0,npix-1
+          if (abs((T(i)-missval)/missval) < 1.d-8 .or. abs((masked_HI(i,1)-missval)/missval) < 1.d-8) then
+             cycle
+          else
+             b = b + 1
+             do j=1,bands
+                dummy(i,1,j) = masked_HI(i,1)*planck(freq(j)*1.d9,T(i))
+                chisq1(j)    = chisq1(j) + (masked(i,1,j) - tau(j)*dummy(i,1,j))**2.d0
+                vals(b,j)    = masked(i,1,j)
+             end do
+          endif
+       end do
     end if
+
+    ! Compute standard deviation for the chisq
+    do j=1,bands
+       mu(j)     = sum(vals(1:b,j))/b
+       sigma(j)  = sqrt(sum((vals(1:b,j)-mu(j))**2.d0)/(b-1))
+       chisq1(j) = chisq1(j)/(sigma(j)**2.d0)
+    end do
+
+
+    do j=1,bands
+       write(*,*) freqs(j) // ':'
+       do n=1,niter
+          chisq2 = 0.d0
+          r(j) = rand_normal(tau(j),std(j))
+          do i=0,npix-1
+             if (abs((T(i)-missval)/missval) < 1.d-8 .or. abs((masked_HI(i,1)-missval)/missval) < 1.d-8) then
+                cycle
+             else
+                dummy(i,1,j) = masked_HI(i,1)*planck(freq(j)*1.d9,T(i))
+                chisq2       = chisq2 + ((masked(i,1,j) - r(j)*dummy(i,1,j))**2.d0)/(sigma(j)**2.d0)
+             end if
+          end do
+
+          a(2) = chisq2/chisq1(j)
+          p    = minval(a)
+          call RANDOM_NUMBER(num)
+
+          if (num > p) then
+             ! write(*,*) p
+             if (r(j) .gt. 0.d0 .and. r(j) .lt. 1.d-3) then
+                tau(j)    = r(j)
+                chisq1(j) = chisq2
+             end if
+          end if
+       end do
+    end do
 
     write(*,*) 'Chi-square values :'
     do j=1,bands
@@ -322,40 +356,12 @@ contains
     end do
     write(*,*) ''
 
-    do j=1,bands
-      do n=1,niter
-        chisq2 = 0.d0
-        r(j) = rand_normal(tau(j),mu(j))
-        do i=0,npix-1
-          if (abs((T(i)-missval)/missval) < 1.d-8 .or. abs((masked_HI(i,1)-missval)/missval) < 1.d-8) then
-            cycle
-          else
-            dummy(i,1,j)  = masked_HI(i,1)*planck(freq(j)*1.d9,T(i))
-            chisq2 = chisq2 + (masked(i,1,j) - r(j)*dummy(i,1,j))**2.d0
-          end if
-        end do
-
-        a(2) = chisq2/chisq1(j)
-        p    = minval(a)
-   
-        call RANDOM_NUMBER(num)
-
-        if (num > p) then
-          do i=1,bands
-            if (r(i) .gt. 0.d0 .and. r(i) .lt. 1.d-3) then
-              tau(i) = r(i)
-            end if
-          chisq1 = chisq2
-          end do
-        end if
-      end do
-    end do
     sample_A = tau
 
   end function sample_A
 
 
-  function sample_T(x,y,z,T,mu,amp)
+  function sample_T(x,y,z,T,sigma,amp)
     implicit none
 
     real(dp), intent(in)                   :: x
@@ -363,7 +369,7 @@ contains
     real(dp), intent(in)                   :: z
     real(dp), dimension(bands), intent(in) :: amp
     real(dp), intent(in)                   :: T
-    real(dp), intent(in)                   :: mu
+    real(dp), intent(in)                   :: sigma
     real(dp), dimension(2)                 :: a
     real(dp), dimension(bands)             :: test
     real(dp)                               :: sample_T, temp, r, p, b, c, num
@@ -373,25 +379,25 @@ contains
     c    = x
 
     do i=1,niter
-      r    = rand_normal(temp,mu)
-      test = 0.d0
+       r    = rand_normal(temp,sigma)
+       test = 0.d0
 
-      do j=1,bands
-        test(j) = amp(j)*z*planck(freq(j)*1.d9,r)
-      end do
+       do j=1,bands
+          test(j) = amp(j)*z*planck(freq(j)*1.d9,r)
+       end do
 
-      b    = sum(abs(test-y))
-      a(2) = b/c
-      p    = minval(a)
+       b    = sum((test-y)**2.d0)
+       a(2) = b/c
+       p    = minval(a)
 
-      call RANDOM_NUMBER(num)
+       call RANDOM_NUMBER(num)
 
-      if (num > p) then
-        if (r .gt. 15.d0 .and. r .lt. 30.d0 ) then
-          temp = r
-          c    = b
-        end if
-      end if
+       if (num > p) then
+          if (r .gt. 15.d0 .and. r .lt. 30.d0 ) then
+             temp = r
+             c    = b
+          end if
+       end if
     end do
 
     sample_T = temp
@@ -416,10 +422,10 @@ contains
           do j=1,bands
              y(j) = masked(l,1,j)
           end do
-        z    = masked_HI(l,1)
-        x    = sum(abs(amps(:)*dummy(l,1,:) - y(:)))
-        create_T(l) = sample_T(x,y,z,T(l),dust_T_sigma,clamps)
-      endif
+          z    = masked_HI(l,1)
+          x    = sum((amps(:)*dummy(l,1,:) - y(:))**2.d0)
+          create_T(l) = sample_T(x,y,z,T(l),dust_T_sigma,clamps)
+       endif
     end do
   end function create_T
 
