@@ -174,11 +174,12 @@ program dust_hi_fit
     amps(j) = sum1(j)/sum2(j)
   end do
 
-  amps(1) = 1.0d-7
-  amps(2) = 1.0d-6
-  amps(3) = 1.0d-6
-  amps(4) = 1.0d-5
-  amps(5) = 1.0d-5
+  amps(1) = 1.d-7
+  amps(2) = 1.d-6
+  amps(3) = 1.d-6
+  amps(4) = 1.d-6
+  amps(5) = 1.d-5
+  amps(6) = 1.d-4
 
   clamps = amps
 
@@ -349,8 +350,15 @@ contains
           if (num > p) then
              ! write(*,*) p
              if (r(j) .gt. 0.d0 .and. r(j) .lt. 1.d-3) then
-                tau(j)    = r(j)
-                chisq1(j) = chisq2
+                if (j .gt. 1) then
+                   if (r(j) .gt. tau(j-1)) then
+                      tau(j)    = r(j)
+                      chisq1(j) = chisq2
+                   end if
+                else if (j .eq. 1) then
+                   tau(j)    = r(j)
+                   chisq1(j) = chisq2
+                end if
              end if
           end if
        end do
