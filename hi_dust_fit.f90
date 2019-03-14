@@ -16,7 +16,7 @@ program dust_hi_fit
   character(len=128)              :: arg1, arg2, arg3, fitsname, filename, file1, file2
   character(len=80)               :: line
   character(len=80), dimension(1) :: line2
-  character(len=3)                :: number
+  character(len=4)                :: number
 
   real(dp), allocatable, dimension(:,:)      :: HI_temp, HI_mask, masked_HI, T_map
   real(dp), allocatable, dimension(:,:,:)    :: masked, dummy
@@ -40,6 +40,7 @@ program dust_hi_fit
 10 format (I1)
 11 format (I2)
 12 format (I3)
+13 format (I4)
   
   if (iargc() < 3) then
      write(*,*) 'Usage:'
@@ -177,8 +178,8 @@ program dust_hi_fit
   amps(1) = 1.d-7
   amps(2) = 1.d-6
   amps(3) = 1.d-6
-  amps(4) = 1.d-6
-  amps(5) = 1.d-5
+  amps(4) = 1.d-5
+  amps(5) = 1.d-4
   amps(6) = 1.d-4
 
   clamps = amps
@@ -187,7 +188,7 @@ program dust_hi_fit
     write(*,*) freqs(n) // ': ', clamps(n)
   end do
 
-  write(*,*) '-------------------------------------'
+  write(*,*) '----------------------------------'
   write(*,*) ''
 
   !------------------------------------------------------------
@@ -241,6 +242,8 @@ program dust_hi_fit
            write(number,11) m
         else if (m .gt. 99) then
            write(number,12) m
+        else if (m .gt. 999) then
+           write(number, 13) m
         endif
 
         fitsname   = trim(output) // 'dust_Td_' // trim(number) // '.fits'
@@ -248,8 +251,8 @@ program dust_hi_fit
         call write_maps(npix,nmaps,header)
      end if
     
-     write(35,'(6(E17.8))') clamps(1), clamps(2), clamps(3), clamps(4), clamps(5), clamps(6)
-     write(*,*) '-------------------------------------'
+     write(35,'(5(E17.8))') clamps(1), clamps(2), clamps(3), clamps(4), clamps(5), clamps(6)
+     write(*,*) '----------------------------------'
      write(*,*) ''
 
   end do
