@@ -7,18 +7,18 @@ program dust_hi_fit
 
   integer(i4b)        :: i, j, l, m, n, niter, npix, nside, nlheader, nmaps, ordering, pics, times, bands
   real(dp)            :: nullval, h, c, k, T, temp, fre, x, z, p, test,T_sum
-  real(dp)            :: dust_T_init, dust_T_sigma
+  real(dp)            :: dust_T_init, dust_T_sigma, chisq
   real(dp)            :: missval = -1.6375d30
   logical(lgt)        :: anynull
   logical(lgt)        :: double_precision  
 
   character(len=128)              :: data, map1, map2, map3, map4, map5, map6, mapHI, mask, output
-  character(len=128)              :: arg1, arg2, arg3, fitsname, filename, file1, file2
+  character(len=128)              :: arg1, arg2, arg3, fitsname, filename, file1, file2, chi_file
   character(len=80)               :: line
   character(len=80), dimension(1) :: line2
   character(len=4)                :: number
 
-  real(dp), allocatable, dimension(:,:)      :: HI_temp, HI_mask, HI, T_map
+  real(dp), allocatable, dimension(:,:)      :: HI_mask, HI, T_map
   real(dp), allocatable, dimension(:,:,:)    :: maps, dummy
   real(dp), allocatable, dimension(:)        :: amps, clamps, dummy_T, new_T, amp_std
   real(dp), allocatable, dimension(:)        :: y, freq, sum1, sum2
@@ -212,6 +212,12 @@ program dust_hi_fit
 
      new_T      = dummy_T
      clamps     = amps
+
+     chisq   = compute_chisq(new_T,clamps)
+
+     write(*,*) 'Total Chi-square: '
+     write(*,*) chisq
+     write(*,*) ''
 
      write(*,*) 'Amplitudes: '
      do n=1,bands

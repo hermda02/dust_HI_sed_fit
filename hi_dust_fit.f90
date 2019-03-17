@@ -325,11 +325,11 @@ contains
     sum2 = 0.d0
 
     do i=0,npix-1
-       if (abs((new_T(i)-missval)/missval) < 1.d-8 .or. abs((HI(i,1)-missval)/missval) < 1.d-8) then
+       if (abs((T(i)-missval)/missval) < 1.d-8 .or. abs((HI(i,1)-missval)/missval) < 1.d-8) then
           cycle
        else
           do j=1,bands
-             model(i,1,j)  = HI(i,1)*planck(freq(j)*1.d9,new_T(i))
+             model(i,1,j)  = HI(i,1)*planck(freq(j)*1.d9,T(i))
              sum1(j) = sum1(j) + (maps(i,1,j)*model(i,1,j)*cov(i,1,j))
              sum2(j) = sum2(j) + (model(i,1,j)**2.d0*cov(i,1,j))
           end do
