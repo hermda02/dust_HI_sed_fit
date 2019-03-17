@@ -58,7 +58,7 @@ program dust_hi_fit
   read(arg3,*) times
 
   data  = '../dust_data/sed_data/'
-  output= 'results/6bands/'
+  output= 'results/6bands/v3/'
 
   map1  = trim(data) // 'npipe6v20_353-5_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
   map2  = trim(data) // 'npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
@@ -269,7 +269,7 @@ program dust_hi_fit
         call write_maps(npix,nmaps,header)
      end if
     
-     write(35,'(5(E17.8))') clamps(1), clamps(2), clamps(3), clamps(4), clamps(5), clamps(6)
+     write(35,'(6(E17.8))') clamps(1), clamps(2), clamps(3), clamps(4), clamps(5), clamps(6)
      write(36,'(1(E17.8))') chisq
      write(*,*) '----------------------------------'
      write(*,*) ''
