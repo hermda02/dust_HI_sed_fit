@@ -58,11 +58,11 @@ program dust_hi_fit
   read(arg3,*) times
 
   data  = '../dust_data/sed_data/'
-  output= 'results/6bands/v3/'
+  output= 'results/6bands/v5/'
 
-  map1  = trim(data) // 'npipe6v20_353-5_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
-  map2  = trim(data) // 'npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
-  map3  = trim(data) // 'npipe6v20_857-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
+  map1  = trim(data) // 'npipe6v20_353-5_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated_no_zodi.fits'
+  map2  = trim(data) // 'npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated_no_zodi.fits'
+  map3  = trim(data) // 'npipe6v20_857-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated_no_zodi.fits'
   map4  = trim(data) // 'DIRBE_240micron_1deg_h064_calibrated.fits'
   map5  = trim(data) // 'DIRBE_140micron_1deg_h064_calibrated.fits'
   map6  = trim(data) // 'DIRBE_100micron_1deg_h064_calibrated.fits'
