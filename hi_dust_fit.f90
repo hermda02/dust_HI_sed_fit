@@ -6,23 +6,23 @@ program dust_hi_fit
   implicit none
 
   integer(i4b)        :: i, j, l, m, n, niter, npix, nside, nlheader, nmaps, ordering, pics, times, bands
-  real(dp)            :: nullval, h, c, k, T, temp, fre, x, z, p, test,T_sum
-  real(dp)            :: dust_T_init, dust_T_sigma, chisq
+  real(dp)            :: nullval, h, c, k, T, temp, fre, x, z, p, test, T_sum
+  real(dp)            :: dust_T_init, dust_T_sigma, chisq, thresh
   real(dp)            :: missval = -1.6375d30
   logical(lgt)        :: anynull
   logical(lgt)        :: double_precision  
 
-  character(len=128)              :: data, map1, map2, map3, map4, map5, map6, mapHI, mask, output
-  character(len=128)              :: arg1, arg2, arg3, fitsname, filename, file1, file2
-  character(len=128)              :: rms1, rms2, rms3, rms4, rms5, rms6, chi_file
-  character(len=80)               :: line
+  character(len=128)              :: map1, map2, map3, map4, map5, map6, mapHI, mask, output
+  character(len=128)              :: arg1, arg2, arg3, arg4, fitsname, filename, file1, file2
+  character(len=128)              :: rms1, rms2, rms3, rms4, rms5, rms6, chi_file, amp_dist
+  character(len=80)               :: line, data 
   character(len=80), dimension(1) :: line2
   character(len=4)                :: number
 
   real(dp), allocatable, dimension(:,:)      :: HI_mask, HI, T_map
-  real(dp), allocatable, dimension(:,:,:)    :: maps, model, rmss, cov, normal
+  real(dp), allocatable, dimension(:,:,:)    :: maps, model, rmss, cov
   real(dp), allocatable, dimension(:)        :: amps, clamps, model_T, new_T, amp_std
-  real(dp), allocatable, dimension(:)        :: y, freq, sum1, sum2
+  real(dp), allocatable, dimension(:)        :: y, freq, sum1, sum2, norm, s
   character(len=80),  dimension(180)         :: header
   character(len=8),allocatable, dimension(:) :: freqs
 
@@ -43,9 +43,10 @@ program dust_hi_fit
 12 format (I3)
 13 format (I4)
   
-  if (iargc() < 3) then
+  if (iargc() < 4) then
      write(*,*) 'Usage:'
-     write(*,*) '   dust_hi_fit [temp estimate (full sky)] [std of temperature (for fitting)] [# of iterations]'
+     write(*,*) '   dust_hi_fit [temp estimate (full sky)] [std of temperature (for fitting)]'
+     write(*,*) '               [# of iterations] [HI threshold]'
      write(*,*) ''
      stop
   end if
@@ -56,32 +57,34 @@ program dust_hi_fit
   read(arg2,*) dust_T_sigma
   call getarg(3,arg3)
   read(arg3,*) times
+  call getarg(4,arg4)
+  read(arg4,*) thresh
 
   data  = '../dust_data/sed_data/'
-  output= 'results/6bands/v5/'
+  output= 'results/5bands/v3/'
 
-  map1  = trim(data) // 'npipe6v20_353-5_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated_no_zodi.fits'
-  map2  = trim(data) // 'npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated_no_zodi.fits'
-  map3  = trim(data) // 'npipe6v20_857-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated_no_zodi.fits'
+  map1  = trim(data) // 'npipe6v20_353-5_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
+  map2  = trim(data) // 'npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
+  map3  = trim(data) // 'npipe6v20_857-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
   map4  = trim(data) // 'DIRBE_240micron_1deg_h064_calibrated.fits'
-  map5  = trim(data) // 'DIRBE_140micron_1deg_h064_calibrated.fits'
-  map6  = trim(data) // 'DIRBE_100micron_1deg_h064_calibrated.fits'
+  !map5  = trim(data) // 'DIRBE_140micron_1deg_h064_calibrated.fits'
+  map5  = trim(data) // 'DIRBE_100micron_1deg_h064_calibrated.fits'
   mapHI = trim(data) // 'HI_vel_filter_60arcmin_0064.fits'
   mask  = trim(data) // 'HI_mask.fits'
   rms1  = trim(data) // 'npipe6v20_353-5_n0064_rms_MJy.fits'
   rms2  = trim(data) // 'npipe6v20_545-1_n0064_rms_MJy.fits'
   rms3  = trim(data) // 'npipe6v20_857-1_n0064_rms_MJy.fits'
   rms4  = trim(data) // 'DIRBE_rms_240micron_Nside064_1deg.fits'
-  rms5  = trim(data) // 'DIRBE_rms_140micron_Nside064_1deg.fits'
-  rms6  = trim(data) // 'DIRBE_rms_100micron_Nside064_1deg.fits'
+  !rms5  = trim(data) // 'DIRBE_rms_140micron_Nside064_1deg.fits'
+  rms5  = trim(data) // 'DIRBE_rms_100micron_Nside064_1deg.fits'
 
   i     = getsize_fits(mapHI,nside=nside,ordering=ordering,nmaps=nmaps)
   npix  = nside2npix(nside)
-  bands = 6
+  bands = 5
 
   allocate(maps(0:npix-1,nmaps,bands),model(0:npix-1,nmaps,bands),HI(0:npix-1,nmaps),model_T(0:npix-1))
   allocate(new_T(0:npix-1),HI_mask(0:npix-1,nmaps),T_map(0:npix-1,nmaps))
-  allocate(rmss(0:npix-1,nmaps,bands), cov(0:npix-1,nmaps,bands),normal(0:npix-1,nmaps,bands))
+  allocate(rmss(0:npix-1,nmaps,bands), cov(0:npix-1,nmaps,bands),norm(bands),s(bands))
   allocate(y(bands),freq(bands),sum1(bands),sum2(bands),amps(bands),clamps(bands),freqs(bands),amp_std(bands))
   
   niter = 1000
@@ -90,15 +93,15 @@ program dust_hi_fit
   freq(2) = 545.d0
   freq(3) = 857.d0
   freq(4) = 1249.d0
-  freq(5) = 2141.d0
-  freq(6) = 2998.d0
+  !freq(5) = 2141.d0
+  freq(5) = 2998.d0
 
   freqs(1) = '353_GHz'
   freqs(2) = '545_GHz'
   freqs(3) = '857_GHz'
   freqs(4) = '1249_GHz'
-  freqs(5) = '2141_GHz'
-  freqs(6) = '2998_GHz'
+  !freqs(5) = '2141_GHz'
+  freqs(5) = '2998_GHz'
 
   call read_bintab(mapHI, HI, npix, nmaps, nullval, anynull, header=header)
   call read_bintab(mask, HI_mask, npix, nmaps, nullval, anynull, header=header)
@@ -108,14 +111,14 @@ program dust_hi_fit
   call read_bintab(map3, maps(:,:,3), npix, nmaps, nullval, anynull, header=header)
   call read_bintab(map4, maps(:,:,4), npix, nmaps, nullval, anynull, header=header)
   call read_bintab(map5, maps(:,:,5), npix, nmaps, nullval, anynull, header=header)
-  call read_bintab(map6, maps(:,:,6), npix, nmaps, nullval, anynull, header=header)
+!  call read_bintab(map6, maps(:,:,6), npix, nmaps, nullval, anynull, header=header)
 
   call read_bintab(rms1, rmss(:,:,1), npix, nmaps, nullval, anynull, header=header)
   call read_bintab(rms2, rmss(:,:,2), npix, nmaps, nullval, anynull, header=header)
   call read_bintab(rms3, rmss(:,:,3), npix, nmaps, nullval, anynull, header=header)
   call read_bintab(rms4, rmss(:,:,4), npix, nmaps, nullval, anynull, header=header)
   call read_bintab(rms5, rmss(:,:,5), npix, nmaps, nullval, anynull, header=header)
-  call read_bintab(rms6, rmss(:,:,6), npix, nmaps, nullval, anynull, header=header)
+!  call read_bintab(rms6, rmss(:,:,6), npix, nmaps, nullval, anynull, header=header)
 
   ! Initialize header for writing maps
   nlheader = size(header)
@@ -146,7 +149,7 @@ program dust_hi_fit
   ! Mask maps
   do j = 1, nmaps
     do i = 0, npix-1
-      if (HI_mask(i,j) < 0.5d0) then
+      if (HI(i,j) .gt. thresh) then
         maps(i,:,:) = missval
         HI(i,:)     = missval
         new_T(i)    = missval
@@ -177,17 +180,18 @@ program dust_hi_fit
        cycle
     else
        do j=1,bands
-          cov(i,1,j)    = rmss(i,1,j)**2.d0
-          model(i,1,j)  = HI(i,1)*planck(freq(j)*1.d9,new_T(i))
-          sum1(j)       = sum1(j) + (maps(i,1,j)*cov(i,1,j)*model(i,1,j))
-          sum2(j)       = sum2(j) + (model(i,1,j)**2.d0)*cov(i,1,j)
-          normal(i,1,j) = sqrt(cov(i,1,j)*model(i,1,j)**2.d0)
+          cov(i,1,j)   = rmss(i,1,j)**2.d0
+          model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,new_T(i))
+          sum1(j)      = sum1(j) + (maps(i,1,j)*cov(i,1,j)*model(i,1,j))
+          sum2(j)      = sum2(j) + (model(i,1,j)**2.d0)*cov(i,1,j)
+          norm(j)      = norm(j) + cov(i,1,j)*model(i,1,j)**2.d0
        end do
     endif
   end do
 
   do j=1,bands
     amps(j) = sum1(j)/sum2(j)
+    norm(j) = sqrt(norm(j))
   end do
 
   clamps = amps
@@ -199,11 +203,12 @@ program dust_hi_fit
   write(*,*) '----------------------------------'
   write(*,*) ''
 
-  filename   = trim(output) // 'amplitudes.dat'
-  chi_file   = trim(output) // 'chi_sq.dat'
+  filename      = trim(output) // 'amplitudes.dat'
+  chi_file      = trim(output) // 'chi_sq.dat'
+  amp_dist      = trim(output) // 'amplitude_distribution.dat'
 
-  open(35,file=trim(filename))
-  open(36,file=trim(chi_file))
+  open(35, file = trim(filename))
+  open(36, file = trim(chi_file))
 
   !------------------------------------------------------------
   !------------------------------------------------------------
@@ -227,16 +232,6 @@ program dust_hi_fit
 
      chisq   = compute_chisq(new_T,clamps)
 
-     write(*,*) 'Total Chi-square: '
-     write(*,*) chisq
-     write(*,*) ''
-
-     write(*,*) 'Amplitudes: '
-     do n=1,bands
-        write(*,*) freqs(n) // ': ', clamps(n)
-     end do
-
-     ! --------------------------------------------------
      pics  = 0
      T_sum = 0.d0
 
@@ -250,7 +245,20 @@ program dust_hi_fit
         end if
      end do
 
-     write(*,*) 'T = ', T_sum/pics
+     write(*,*) 'Total Chi-square: '
+     write(*,*) chisq
+     write(*,*) ''
+
+     write(*,*) 'Mean dust temperature: '
+     write(*,*) T_sum/pics
+     write(*,*) ''
+
+     write(*,*) 'Amplitudes: '
+     do n=1,bands
+        write(*,*) freqs(n) // ': ', clamps(n)
+     end do
+
+     ! --------------------------------------------------
 
      ! Write result maps
      if ( mod(m,100) .EQ. 0) then
@@ -269,17 +277,26 @@ program dust_hi_fit
         call write_maps(npix,nmaps,header)
      end if
     
-     write(35,'(6(E17.8))') clamps(1), clamps(2), clamps(3), clamps(4), clamps(5), clamps(6)
+     write(35,'(5(E17.8))') clamps(1), clamps(2), clamps(3), clamps(4), clamps(5)! , clamps(6)
      write(36,'(1(E17.8))') chisq
      write(*,*) '----------------------------------'
      write(*,*) ''
 
   end do
 
-  deallocate(maps,HI,normal)
+  open(37, file = trim(amp_dist))
+  do n=1,1000
+     do j=1,bands
+        s(j) = clamps(j) + rand_normal(0.d0,1.d0)/norm(j)
+     end do
+     write(37,'(5(E17.8))') s(1), s(2), s(3), s(4), s(5)! , s(6)
+  end do
+
+  deallocate(maps,HI,norm)
   deallocate(model,rmss,cov)
   close(35)
-  
+  close(36)
+  close(37)
 
 contains
 
@@ -446,7 +463,7 @@ contains
     file1 = trim(output) // 'dust_Td_' // trim(number) // '.fits'
 
     do y=0,npix-1
-       modl(y,1,:)  = amps(1)*model(y,1,:)
+       modl(y,1,:)  = amps(:)*model(y,1,:)
        resid(y,1,:) = maps(y,1,:) - modl(y,1,:)
     end do
 
