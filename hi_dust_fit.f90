@@ -21,7 +21,7 @@ program dust_hi_fit
 
   real(dp), allocatable, dimension(:,:)      :: HI_mask, HI, T_map
   real(dp), allocatable, dimension(:,:,:)    :: maps, model, rmss, cov
-  real(dp), allocatable, dimension(:)        :: amps, clamps, model_T, new_T, amp_std
+  real(dp), allocatable, dimension(:)        :: amps, clamps, model_T, new_T
   real(dp), allocatable, dimension(:)        :: y, freq, sum1, sum2, norm, s
   character(len=80),  dimension(180)         :: header
   character(len=8),allocatable, dimension(:) :: freqs
@@ -87,7 +87,7 @@ program dust_hi_fit
   allocate(maps(0:npix-1,nmaps,bands),model(0:npix-1,nmaps,bands),HI(0:npix-1,nmaps),model_T(0:npix-1))
   allocate(new_T(0:npix-1),HI_mask(0:npix-1,nmaps),T_map(0:npix-1,nmaps))
   allocate(rmss(0:npix-1,nmaps,bands), cov(0:npix-1,nmaps,bands),norm(bands),s(bands))
-  allocate(y(bands),freq(bands),sum1(bands),sum2(bands),amps(bands),clamps(bands),freqs(bands),amp_std(bands))
+  allocate(y(bands),freq(bands),sum1(bands),sum2(bands),amps(bands),clamps(bands),freqs(bands))
   
   niter = 1000
   pix  = 0
@@ -164,8 +164,8 @@ program dust_hi_fit
 
   !-----------------------------------------------------------------------------------------------------|  
   ! Here we calculate what the amplitude per map, and temperature per pixel should be for the best fit
-  !
   ! with data = I_nu = A_nu * NHI * B_nu(T)
+  !
   ! Following the physical model:
   !             I_nu = kappa_nu * r * m_p * NHI * B_nu(T)
   ! So the amplitude we solve for is A_nu = kappa_nu * r * m_p = tau_nu which encapsulates the dust 
@@ -225,9 +225,6 @@ program dust_hi_fit
 
      ! Here is where all of the calculations happen
      ! --------------------------------------------------
-     do n=1,bands
-        amp_std(n) = abs(0.9d0*clamps(n))
-     end do
 
      model_T = create_T(new_T,npix)
      amps    = sample_A(new_T,npix)
