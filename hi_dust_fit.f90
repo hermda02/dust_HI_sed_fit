@@ -12,9 +12,9 @@ program dust_hi_fit
   logical(lgt)        :: anynull
   logical(lgt)        :: double_precision  
 
-  character(len=128)              :: mapHI, mask, output, mapfile, rmsfile, freqfile
-  character(len=128)              :: arg1, arg2, arg3, arg4, arg5, fitsname, filename, file1, file2
-  character(len=128)              :: chi_file, amp_dist
+  character(len=128)              :: mapHI, output, mapfile, rmsfile, freqfile
+  character(len=128)              :: arg1, arg2, arg3, arg4, arg5, arg6
+  character(len=128)              :: chi_file, amp_dist, fitsname, filename, file1, file2
   character(len=80)               :: line, data, version 
   character(len=80), dimension(1) :: line2
   character(len=4)                :: number
@@ -41,10 +41,10 @@ program dust_hi_fit
 12 format (I3)
 13 format (I4)
   
-  if (iargc() < 5) then
+  if (iargc() < 6) then
      write(*,*) 'Usage:'
      write(*,*) '   dust_hi_fit [temp estimate (full sky)] [std of temperature (for fitting)]'
-     write(*,*) '               [# of iterations] [HI threshold] [version # (v10)]'
+     write(*,*) '               [# of iterations] [HI threshold] [# of bands] [version # (v10)]'
      write(*,*) ''
      stop
   end if
@@ -58,10 +58,14 @@ program dust_hi_fit
   call getarg(4,arg4)
   read(arg4,*) thresh
   call getarg(5,arg5)
-  read(arg5,*) version
+  read(arg5,*) bands
+  call getarg(6,arg6)
+  read(arg6,*) version
 
   data  = '../dust_data/sed_data/'
-  output= 'results/6bands/' // trim(version)// '/'
+  output= 'results/' // trim(version)// '/'
+
+  write(*,*) bands
 
   call system('mkdir -p ./' // trim(output))
 
@@ -73,42 +77,42 @@ program dust_hi_fit
 
   i     = getsize_fits(mapHI,nside=nside,ordering=ordering,nmaps=nmaps)
   npix  = nside2npix(nside)
-  bands = 6
 
   allocate(maps(0:npix-1,nmaps,bands),model(0:npix-1,nmaps,bands),HI(0:npix-1,nmaps),model_T(0:npix-1))
   allocate(new_T(0:npix-1),T_map(0:npix-1,nmaps),map(bands),rms(bands))
   allocate(rmss(0:npix-1,nmaps,bands), cov(0:npix-1,nmaps,bands),norm(bands),s(bands))
   allocate(y(bands),freq(bands),sum1(bands),sum2(bands),amps(bands),clamps(bands),freqs(bands))
-  niter = 1000
-  pix  = 0
+
+  ! Open and read frequencies, map, and rms map names
 
   open(28,file=trim(rmsfile))
   open(29,file=trim(freqfile))
   open(30,file=trim(mapfile))
   read(29,*) freq
-  
+  close(29)
+  open(29,file=trim(freqfile))
   do i=1,bands
      read(28,fmt='(a)') rms(i)
+     read(29,fmt='(a)') freqs(i)
      read(30,fmt='(a)') map(i)
      map(i) = trim(data) // trim(map(i))
      rms(i) = trim(data) // trim(rms(i))
-  end do
-  close(29)
-
-  call read_bintab(mapHI, HI, npix, nmaps, nullval, anynull, header=header)
-
-  open(29,file=trim(freqfile))
-  do i=1,bands
-     read(29,fmt='(a)') freqs(i)
-     call read_bintab(map(i), maps(:,:,i), npix, nmaps, nullval, anynull, header=header)
-     call read_bintab(rms(i), rmss(:,:,i), npix, nmaps, nullval, anynull, header=header)
      freqs(i) = trim(freqs(i))
   end do
 
   close(28)
   close(29)
   close(30)
+
+  ! Read maps
+  call read_bintab(mapHI, HI, npix, nmaps, nullval, anynull, header=header)
+
+  do i=1,bands
+     call read_bintab(map(i), maps(:,:,i), npix, nmaps, nullval, anynull, header=header)
+     call read_bintab(rms(i), rmss(:,:,i), npix, nmaps, nullval, anynull, header=header)
+  end do
      
+
   ! Initialize header for writing maps
   nlheader = size(header)
   do i=1,nlheader
@@ -134,6 +138,9 @@ program dust_hi_fit
   do i=0,npix-1
      new_T(i) = dust_T_init
   end do
+
+  niter = 1000
+  pix  = 0
 
   ! Mask maps
   do j = 1, nmaps
