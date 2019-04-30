@@ -12,7 +12,7 @@ program dust_hi_fit
   logical(lgt)        :: anynull
   logical(lgt)        :: double_precision  
 
-  character(len=128)              :: mapHI, output, mapfile, rmsfile, freqfile
+  character(len=128)              :: mapHI, output, mapfile, rmsfile, freqfile, bandfile
   character(len=128)              :: arg1, arg2, arg3, arg4, arg5, arg6
   character(len=128)              :: chi_file, amp_dist, fitsname, filename, file1, file2
   character(len=80)               :: line, data, version 
@@ -72,6 +72,7 @@ program dust_hi_fit
   mapfile  = 'sed_maps.txt'
   rmsfile  = 'sed_rms.txt'
   freqfile = 'sed_freqs.txt'
+  bandfile = 'sed_bands.txt'
   
   mapHI = trim(data) // 'HI_vel_filter_60arcmin_0064.fits'
 
@@ -85,21 +86,22 @@ program dust_hi_fit
 
   ! Open and read frequencies, map, and rms map names
 
+  open(27,file=trim(bandfile))
   open(28,file=trim(rmsfile))
   open(29,file=trim(freqfile))
   open(30,file=trim(mapfile))
   read(29,*) freq
-  close(29)
-  open(29,file=trim(freqfile))
+
   do i=1,bands
      read(28,fmt='(a)') rms(i)
-     read(29,fmt='(a)') freqs(i)
+     read(27,fmt='(a)') freqs(i)
      read(30,fmt='(a)') map(i)
      map(i) = trim(data) // trim(map(i))
      rms(i) = trim(data) // trim(rms(i))
      freqs(i) = trim(freqs(i))
   end do
 
+  close(27)
   close(28)
   close(29)
   close(30)
