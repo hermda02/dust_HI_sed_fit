@@ -64,8 +64,6 @@ program dust_hi_fit
   data  = '../dust_data/sed_data/'
   output= 'results/' // trim(version)// '/'
 
-  write(*,*) bands
-
   call system('mkdir -p ./' // trim(output))
 
   mapfile  = 'sed_maps_v3.txt'
@@ -147,10 +145,13 @@ program dust_hi_fit
   do j = 1, nmaps
     do i = 0, npix-1
       if (HI(i,j) .gt. thresh) then
-        maps(i,:,:) = missval
-        rmss(i,:,:) = missval
-        new_T(i)    = missval
-        HI(i,:)     = missval
+        maps(i,:,:)    = missval
+        rmss(i,:,:)    = missval
+        new_T(i)       = missval
+        HI(i,:)        = missval
+        amps(i,:)      = missval
+        clamps(i,:)    = missval
+        amp_map(i,:,:) = missval
       else
         pix        = pix + 1
       end if
