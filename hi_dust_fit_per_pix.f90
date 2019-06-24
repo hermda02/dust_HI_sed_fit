@@ -416,9 +416,6 @@ contains
     write(*,*) 'Sum_x2'
     write(*,*) sumx2
     sumy  = 0.d0
-    stop
-
-
     do i=0,npix-1
       tamp = log10(ampls(i,:))
        if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
