@@ -153,19 +153,19 @@ program dust_hi_fit
         clamps(i,:)    = missval
         amp_map(i,:,:) = missval
       else
-        pix        = pix + 1
+        pix            = pix + 1
       end if
     end do
   end do
 
   !-----------------------------------------------------------------------------------------------------|  
-  ! Here we calculate what the amplitude per map, and temperature per pixel should be for the best fit
-  ! with data = I_nu = A_nu * NHI * B_nu(T)
-  !
-  ! Following the physical model:
-  !             I_nu = kappa_nu * r * m_p * NHI * B_nu(T)
-  ! So the amplitude we solve for is A_nu = kappa_nu * r * m_p = tau_nu which encapsulates the dust 
-  ! emissivity cross section per dust grain per NHI, in units of [cm^2].
+  ! Here we calculate what the amplitude per map, and temperature per pixel should be for the best fit  |
+  ! with data = I_nu = A_nu * NHI * B_nu(T)                                                             |
+  !                                                                                                     |
+  ! Following the physical model:                                                                       |
+  !             I_nu = kappa_nu * r * m_p * NHI * B_nu(T)                                               |
+  ! So the amplitude we solve for is A_nu = kappa_nu * r * m_p = tau_nu which encapsulates the dust     |
+  ! emissivity cross section per dust grain per NHI, in units of [cm^2].                                |
   !-----------------------------------------------------------------------------------------------------|  
   
   ! Initializing
@@ -204,7 +204,7 @@ program dust_hi_fit
      ! Here is where all of the calculations happen
      ! --------------------------------------------------
 
-     model_T = create_T(new_T,npix)
+     model_T = sample_T(new_T,npix)
      new_T   = model_T
      amps    = sample_A(new_T,npix)
 
@@ -234,7 +234,7 @@ program dust_hi_fit
      ! --------------------------------------------------
 
      ! Write result maps
-     if ( mod(m,100) .EQ. 0) then
+     if ( mod(m,10) .EQ. 0) then
         if (m .lt. 10) then
            write(number,10) m
         else if (m .gt. 9 .and. m .lt. 100) then
@@ -313,12 +313,12 @@ contains
 
   end function sample_A
 
-  function create_T(T,npix)
+  function sample_T(T,npix)
     implicit none
 
     integer(i4b), intent(in)                     :: npix
     real(dp), dimension(0:npix-1), intent(in)    :: T
-    real(dp), dimension(0:npix-1)                :: create_T
+    real(dp), dimension(0:npix-1)                :: sample_T
     real(dp), dimension(bands)                   :: y,covs,test
     real(dp), dimension(2)                       :: a
     real(dp)                                     :: x,temp,r,b,c,num
@@ -330,7 +330,7 @@ contains
           x = 0.d0
           do j=1,bands
              y(j) = maps(i,1,j)
-             x = x + (clamps(i,j)*model(i,1,j) - y(j))**2.d0
+             x    = x + (clamps(i,j)*model(i,1,j) - y(j))**2.d0
           end do
 
           temp = T(i)
@@ -356,10 +356,10 @@ contains
                 end if
              end if
           end do
-          create_T(i)  = temp
+          sample_T(i)  = temp
        endif
     end do
-  end function create_T
+  end function sample_T
 
   function compute_chisq(T,amp)
     implicit none
