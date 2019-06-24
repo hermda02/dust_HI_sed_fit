@@ -367,7 +367,6 @@ contains
              end if
           end do
           sample_T(i)  = temp
-          write(*,*) sample_T(i)
        endif
     end do
   end function sample_T
