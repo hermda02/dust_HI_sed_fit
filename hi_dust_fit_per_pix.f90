@@ -423,7 +423,7 @@ contains
        else
          sumy(i)  = sum(tamp(:))
          sumxy(i) = sum((logfreq(:)*tamp(:)))
-         calc_beta(i) = (bands * sumxy(i) - sumx*sumy(i))/(bands*sumx2 - 2.d0*sumx)
+         calc_beta(i) = (bands * sumxy(i) - sumx*sumy(i))/(bands*sumx2 - sumx**2.d0)
          write(*,*) calc_beta(i)
        end if
     end do
