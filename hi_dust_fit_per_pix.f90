@@ -192,6 +192,8 @@ program dust_hi_fit
     endif
   end do
 
+  write(*,*) amps(1,:)
+
   clamps = amps
 
   beta_map(:,1) = calc_beta(clamps,npix)
