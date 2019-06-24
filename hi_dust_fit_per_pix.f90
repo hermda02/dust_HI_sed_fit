@@ -181,15 +181,16 @@ program dust_hi_fit
   write(*,*) 'Initializing amplitudes: '
   write(*,*) '------------------------ '
   
-  do i=0,10
+  do i=0,npix-1
     if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
        cycle
     else
        do j=1,bands
           model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,new_T(i))
           write(*,*) model(i,1,j)
-          write(*,*) (maps(i,1,j)*cov(i,1,j)*model(i,1,j))
-          write(*,*) (model(i,1,j)**2.d0*cov(i,1,j))
+          write(*,*) (maps(i,1,j))
+          write(*,*) (cov(i,1,j))
+          stop
           amps(i,j)    = (maps(i,1,j)*cov(i,1,j)*model(i,1,j))/(model(i,1,j)**2.d0*cov(i,1,j))
           write(*,*) amps(i,j)
        end do
