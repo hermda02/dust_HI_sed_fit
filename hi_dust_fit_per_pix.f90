@@ -188,10 +188,7 @@ program dust_hi_fit
        do j=1,bands
           cov(i,1,j)   = rmss(i,1,j)**2.d0
           model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,new_T(i))
-          write(*,*) (maps(i,1,j)*cov(i,1,j)*model(i,1,j))
-          write(*,*) (model(i,1,j)**2.d0*cov(i,1,j))
           amps(i,j)    = (maps(i,1,j)*cov(i,1,j)*model(i,1,j))/(model(i,1,j)**2.d0*cov(i,1,j))
-          write(*,*) amps(i,j)
        end do
     endif
   end do
@@ -420,10 +417,7 @@ contains
     write(*,*) sumx2
     sumy  = 0.d0
     do i=0,npix-1
-      write(*,*) ampls(i,:)
       tamp = ampls(i,:)
-      write(*,*) tamp
-      stop
        if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
           cycle
        else
