@@ -409,8 +409,8 @@ contains
     real(dp), dimension(bands)                      :: tamp,xy
     real(dp)                                        :: sumx,sumx2
 
-    sumx  = sum(freq(:)*1.0d9)
-    sumx2 = sum((freq(:)*1.0d9)**2.d0)
+    sumx  = log10(sum(freq(:)*1.0d9))
+    sumx2 = log10(sum((freq(:)*1.0d9)**2.d0))
     write(*,*) 'Sum_x'
     write(*,*) sumx
     write(*,*) 'Sum_x2'
@@ -421,17 +421,12 @@ contains
        if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
           cycle
        else
-         sumy(i)  = sum(tamp)
-         sumxy(i) = sum(freq(:)*ampls(i,:))
+         sumy(i)  = log10(sum(tamp))
+         sumxy(i) = log10(sum(freq(:)*ampls(i,:)))
          calc_beta(i) = (bands * sumxy(i) - sumx*sumy(i))/(bands*sumx2 - sumx**2.d0)
-         ! write(*,*) calc_beta(i)
+         write(*,*) calc_beta(i)
        end if
     end do
-
-    write(*,*) 'Sum_y'
-    write(*,*) sumy(600)
-    write(*,*) 'Sum_xy'
-    write(*,*) sumxy(600)
 
   end function calc_beta
 
