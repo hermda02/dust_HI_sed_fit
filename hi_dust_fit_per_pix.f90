@@ -425,7 +425,7 @@ contains
          sumxy(i) = sum((logfreq(:)*tamp(:)))
          calc_beta(i) = (bands * sumxy(i) - sumx*sumy(i))/(bands*sumx2 - sumx**2.d0)
          ! write(*,*) calc_beta(i)
-         if (isnan(calc_beta(i))) write(*,*) i
+         if (isnan(calc_beta(i))) write(*,*) (bands*sumx2 - sumx**2.d0)
        end if
     end do
 
