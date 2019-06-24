@@ -403,6 +403,7 @@ contains
     integer(i4b), intent(in)                        :: npix
     real(dp), dimension(0:npix-1,bands), intent(in) :: ampls
     real(dp), dimension(0:npix-1)                   :: sumxy,sumy,calc_beta
+    real(dp), dimension(bands)                      :: tamp,xy
     real(dp)                                        :: sumx,sumx2
 
     sumx  = sum(freq(:)*1.0d9)
@@ -413,10 +414,13 @@ contains
     write(*,*) sumx2
     sumy  = 0.d0
     do i=0,npix-1
+      write(*,*) ampls(i,:)
+      tamp = ampls(i,:)
+      write(*,*) tamp
        if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
           cycle
        else
-         sumy(i)  = sum(ampls(i,:))
+         sumy(i)  = sum(tamp)
          sumxy(i) = sum(freq(:)*ampls(i,:))
          calc_beta(i) = (bands * sumxy(i) - sumx*sumy(i))/(bands*sumx2 - sumx**2.d0)
          ! write(*,*) calc_beta(i)
