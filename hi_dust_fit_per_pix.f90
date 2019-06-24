@@ -406,8 +406,14 @@ contains
     integer(i4b), intent(in)                        :: npix
     real(dp), dimension(0:npix-1,bands), intent(in) :: ampls
     real(dp), dimension(0:npix-1)                   :: sumxy,sumy,calc_beta
-    real(dp), dimension(bands)                      :: tamp,xy
+    real(dp), dimension(bands)                      :: tamp,xy,logfreq
     real(dp)                                        :: sumx,sumx2
+
+
+    logfreq = log10(freq(:)*1e9)
+    write(*,*) logfreq
+    stop
+
 
     sumx  = sum(log10(freq(:)*1.0d9))
     sumx2 = sum(log10((freq(:)*1.0d9)**2.d0))
@@ -416,6 +422,9 @@ contains
     write(*,*) 'Sum_x2'
     write(*,*) sumx2
     sumy  = 0.d0
+
+
+
     do i=0,npix-1
       tamp = ampls(i,:)
        if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
