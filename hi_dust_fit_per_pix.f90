@@ -423,6 +423,11 @@ contains
        end if
     end do
 
+    write(*,*) 'Sum_y'
+    write(*,*) sumy(600)
+    write(*,*) 'Sum_xy'
+    write(*,*) sumxy(600)
+
   end function calc_beta
 
   subroutine write_maps(npix,nmaps,header)
