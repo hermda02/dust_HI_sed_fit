@@ -417,6 +417,7 @@ contains
       write(*,*) ampls(i,:)
       tamp = ampls(i,:)
       write(*,*) tamp
+      stop
        if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
           cycle
        else
