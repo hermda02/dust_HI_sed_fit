@@ -69,10 +69,10 @@ program dust_hi_fit
 
   call system('mkdir -p ./' // trim(output))
 
-  mapfile  = 'sed_maps.txt'
-  rmsfile  = 'sed_rms.txt'
-  freqfile = 'sed_freqs.txt'
-  bandfile = 'sed_bands.txt'
+  mapfile  = 'sed_maps_v3.txt'
+  rmsfile  = 'sed_rms_v3.txt'
+  freqfile = 'sed_freqs_v3.txt'
+  bandfile = 'sed_bands_v3.txt'
   
   mapHI = trim(data) // 'HI_vel_filter_60arcmin_0064.fits'
 
@@ -141,7 +141,7 @@ program dust_hi_fit
      new_T(i) = dust_T_init
   end do
 
-  niter = 1000
+  niter = 5000
   pix  = 0
 
   ! Mask maps
@@ -342,9 +342,9 @@ contains
           cycle
        else
           do j=1,bands
-             model(i,1,j)  = HI(i,1)*planck(freq(j)*1.d9,T(i))
-             sum1(j) = sum1(j) + (maps(i,1,j)*model(i,1,j)*cov(i,1,j))
-             sum2(j) = sum2(j) + (model(i,1,j)**2.d0*cov(i,1,j))
+             model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,T(i))
+             sum1(j)      = sum1(j) + (maps(i,1,j)*model(i,1,j)*cov(i,1,j))
+             sum2(j)      = sum2(j) + (model(i,1,j)**2.d0*cov(i,1,j))
           end do
        endif
     end do
@@ -355,72 +355,82 @@ contains
 
   end function sample_A
 
-
-  function sample_T(x,y,z,T,sigma,amp,covs)
-    implicit none
-
-    real(dp), intent(in)                   :: x
-    real(dp), dimension(bands), intent(in) :: y, covs
-    real(dp), intent(in)                   :: z
-    real(dp), dimension(bands), intent(in) :: amp
-    real(dp), intent(in)                   :: T
-    real(dp), intent(in)                   :: sigma
-    real(dp), dimension(2)                 :: a
-    real(dp), dimension(bands)             :: test
-    real(dp)                               :: sample_T, temp, r, p, b, c, num
-
-    temp = T
-    a(1) = 1.d0
-    c    = x
-
-    do l=1,niter
-       r    = rand_normal(temp,sigma)
-       test = 0.d0
-
-       do j=1,bands
-          test(j) = amp(j)*z*planck(freq(j)*1.d9,r)
-       end do
-
-       b    = sum((test-y)**2.d0/covs)
-       a(2) = b/c
-       p    = minval(a)
-
-       call RANDOM_NUMBER(num)
-
-       if (num > p) then
-          if (r .gt. 15.d0 .and. r .lt. 30.d0 .and. abs(temp - r) .gt. 0.001d0) then
-             temp = r
-             c    = b
-          end if
-       end if
-    end do
-
-    sample_T = temp
-
-  end function sample_T
-
-
   function create_T(T,npix)
     implicit none
 
     integer(i4b), intent(in)                     :: npix
     real(dp), dimension(0:npix-1), intent(in)    :: T
     real(dp), dimension(0:npix-1)                :: create_T
-    real(dp), dimension(bands)                   :: y,covs
-    real(dp)                                     :: z
-    real(dp)                                     :: x
+    ! real(dp), dimension(niter+1)                 :: chi, tump, accept, prob
+    real(dp), dimension(bands)                   :: y,covs,test
+    real(dp), dimension(2)                       :: a
+    real(dp)                                     :: x,temp,r,b,c,num!,naccept
 
     do i=0,npix-1
        if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
           cycle
        else
+          x = 0.d0
           do j=1,bands
              y(j) = maps(i,1,j)
-             covs(j) = cov(i,1,j)
+!             covs(j) = cov(i,1,j)
+             x = x + (clamps(j)*model(i,1,j) - y(j))**2.d0
           end do
-          z    = HI(i,1)
-          x    = sum((clamps(:)*model(i,1,:) - y(:))**2.d0/covs(:))
-          create_T(i) = sample_T(x,y,z,T(i),dust_T_sigma,clamps,covs)
+
+          temp = T(i)
+          a(1) = 1.d0
+          c    = x
+
+          ! prob(1)   = 1.d0
+          ! chi(1)    = x
+          ! tump(1)   = temp
+          ! accept(1) = 0.d0
+          ! naccept   = 0
+
+          do l=1,niter
+             r    = rand_normal(temp,dust_T_sigma)
+             test = 0.d0
+             do j=1,bands
+                test(j) = clamps(j)*HI(i,1)*planck(freq(j)*1.d9,r)
+             end do
+             b    = sum((test-y)**2.d0)
+             a(2) = exp(-b+c)
+             p    = minval(a)
+
+             call RANDOM_NUMBER(num)
+
+             if (num < p) then
+                if (r .lt. 35 .and. r .gt. 10) then
+                   temp  = r
+                   c     = b
+                   ! naccept = naccept + 1
+                end if
+             end if
+
+             ! if (i == 600) then
+             !  prob(l+1)   = p 
+             !  chi(l+1)    = c
+             !  tump(l+1)   = temp
+             !  accept(l+1) = naccept/l
+             ! end if
+          end do
+
+          ! if (i == 600) then
+
+          !   open(40,file = trim(output) // 'prob.dat')
+          !   open(41,file = trim(output) // 'chi.dat')
+          !   open(42,file = trim(output) // 'temps.dat')
+          !   open(43,file = trim(output) // 'accept.dat')
+
+          !   do l = 1,niter+1
+          !     write(40,*) prob(l)
+          !     write(41,*) chi(l)
+          !     write(42,*) tump(l)
+          !     write(43,*) accept(l)
+          !   end do
+
+          ! end if
+          create_T(i)  = temp
        endif
     end do
   end function create_T
@@ -443,7 +453,7 @@ contains
        end do
     end do
 
-    compute_chisq = chi
+    compute_chisq = (chi/(pix*bands))
 
   end function compute_chisq
 
