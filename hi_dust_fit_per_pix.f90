@@ -189,7 +189,7 @@ program dust_hi_fit
           cov(i,1,j)   = rmss(i,1,j)**2.d0
           model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,new_T(i))
           amps(i,j)    = (maps(i,1,j)*cov(i,1,j)*model(i,1,j))/(model(i,1,j)**2.d0*cov(i,1,j))
-          if (amps(i,j) .lt. 0) write(*,*) model(i,1,j          
+          if (amps(i,j) .lt. 0) write(*,*) model(i,1,j)
        end do
     endif
   end do
