@@ -6,7 +6,7 @@ program dust_hi_fit
   implicit none
 
   integer(i4b)        :: i, j, l, m, n, niter, npix, nside, nlheader, nmaps, ordering, pix, times, bands
-  real(dp)            :: nullval, h, c, k, T, temp, fre, x, z, p, test, T_sum
+  real(dp)            :: nullval, h, c, k, T, temp, fre, x, z, p, test, T_sum, beta_sum
   real(dp)            :: dust_T_init, dust_T_sigma, chisq, thresh
   real(dp)            :: missval = -1.6375d30
   logical(lgt)        :: anynull
@@ -19,7 +19,7 @@ program dust_hi_fit
   character(len=80), dimension(1) :: line2
   character(len=4)                :: number
 
-  real(dp), allocatable, dimension(:)          :: model_T, new_T, y, freq, norm, s
+  real(dp), allocatable, dimension(:)          :: model_T, new_T, y, freq, norm, s, beta
   real(dp), allocatable, dimension(:,:)        :: HI, T_map,  sum1, sum2, amps, clamps,beta_map
   real(dp), allocatable, dimension(:,:,:)      :: maps, model, rmss, cov, amp_map
   character(len=80), dimension(180)            :: header
@@ -77,7 +77,7 @@ program dust_hi_fit
   npix  = nside2npix(nside)
 
   allocate(maps(0:npix-1,nmaps,bands),model(0:npix-1,nmaps,bands),HI(0:npix-1,nmaps),model_T(0:npix-1))
-  allocate(new_T(0:npix-1),T_map(0:npix-1,nmaps),map(bands),rms(bands))
+  allocate(new_T(0:npix-1),T_map(0:npix-1,nmaps),map(bands),rms(bands),beta(npix))
   allocate(rmss(0:npix-1,nmaps,bands), cov(0:npix-1,nmaps,bands),beta_map(0:npix-1,nmaps),norm(bands),s(bands))
   allocate(y(bands),freq(bands),amps(0:npix-1,bands),clamps(0:npix-1,bands),freqs(bands),amp_map(0:npix-1,nmaps,bands))
 
@@ -212,14 +212,18 @@ program dust_hi_fit
 
      chisq   = compute_chisq(new_T,clamps)
 
-     T_sum = 0.d0
+     T_sum    = 0.d0
+     beta_sum = 0.d0
+     beta_map(:,1) = calc_beta(clamps,npix)
 
      do n=0,npix-1
-        if (new_T(n) .gt. 10.d0 .and. new_T(n) .lt. 30.d0 ) then
-           T_map(n,1) = new_T(n)
-           T_sum      = T_sum + T_map(n,1)
+        if (abs((HI(n,1)-missval)/missval) < 1.d-8) then
+           T_map(n,1)    = new_T(n)
+           T_sum         = T_sum + T_map(n,1)
+           beta_sum      = beta_sum + beta_map(n,1)
         else
-           T_map(n,1) = missval
+           T_map(n,1)    = missval
+           beta_map(n,1) = missval
         end if
      end do
 
@@ -229,6 +233,10 @@ program dust_hi_fit
 
      write(*,*) 'Mean dust temperature: '
      write(*,*) T_sum/pix
+     write(*,*) ''
+
+     write(*,*) 'Mean dust beta: '
+     write(*,*) beta_sum/pix
      write(*,*) ''
 
      ! --------------------------------------------------
@@ -244,7 +252,6 @@ program dust_hi_fit
         else if (m .gt. 999) then
            write(number, 13) m
         endif
-        beta_map(:,1) = calc_beta(clamps,npix)
         amp_map(:,1,:)  = clamps
         fitsname   = trim(output) // 'dust_Td_' // trim(number) // '.fits'
         write(*,*) '----------------------------------'
@@ -395,11 +402,14 @@ contains
     sumx  = sum(freq(:)*1.0d9)
     sumx2 = sum((freq(:)*1.0d9)**2.d0)
     sumy  = 0.d0
-
     do i=0,npix-1
-      sumy(i)  = sum(ampls(i,:))
-      sumxy(i) = sum(freq(:)*ampls(i,:))
-      calc_beta(i) = (bands * sumxy(i) - sumx*sumy(i))/(bands*sumx2 - sumx**2.d0)
+       if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
+          cycle
+       else
+         sumy(i)  = sum(ampls(i,:))
+         sumxy(i) = sum(freq(:)*ampls(i,:))
+         calc_beta(i) = (bands * sumxy(i) - sumx*sumy(i))/(bands*sumx2 - sumx**2.d0)
+       end if
     end do
 
   end function calc_beta
