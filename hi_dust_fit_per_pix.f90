@@ -187,6 +187,7 @@ program dust_hi_fit
     else
        do j=1,bands
           model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,new_T(i))
+          write(*,*) model(i,1,j)
           write(*,*) (maps(i,1,j)*cov(i,1,j)*model(i,1,j))
           write(*,*) (model(i,1,j)**2.d0*cov(i,1,j))
           amps(i,j)    = (maps(i,1,j)*cov(i,1,j)*model(i,1,j))/(model(i,1,j)**2.d0*cov(i,1,j))
