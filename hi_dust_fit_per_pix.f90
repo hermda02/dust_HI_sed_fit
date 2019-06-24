@@ -219,7 +219,7 @@ program dust_hi_fit
      beta_map(:,1) = calc_beta(clamps,npix)
 
      do n=0,npix-1
-        if (abs((HI(n,1)-missval)/missval) < 1.d-8) then
+        if (new_T(n) .lt. 35 .and. new_T(n) .gt. 10) then
            T_map(n,1)    = new_T(n)
            T_sum         = T_sum + T_map(n,1)
            beta_sum      = beta_sum + beta_map(n,1)
