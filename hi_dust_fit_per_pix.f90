@@ -158,6 +158,8 @@ program dust_hi_fit
     end do
   end do
 
+  write(*,*) pix
+
   !-----------------------------------------------------------------------------------------------------|  
   ! Here we calculate what the amplitude per map, and temperature per pixel should be for the best fit  |
   ! with data = I_nu = A_nu * NHI * B_nu(T)                                                             |
