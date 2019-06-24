@@ -21,8 +21,8 @@ program dust_hi_fit
 
   real(dp), allocatable, dimension(:)          :: model_T, new_T, y, freq, norm, s
   real(dp), allocatable, dimension(:,:)        :: HI, T_map,  sum1, sum2, amps, clamps
-  real(dp), allocatable, dimension(:,:,:)      :: maps, model, rmss, cov
-  character(len=80),  dimension(180)           :: header
+  real(dp), allocatable, dimension(:,:,:)      :: maps, model, rmss, cov, amp_map
+  character(len=80), dimension(180)            :: header
   character(len=100),allocatable, dimension(:) :: freqs, map, rms
 
 
@@ -81,7 +81,7 @@ program dust_hi_fit
   allocate(maps(0:npix-1,nmaps,bands),model(0:npix-1,nmaps,bands),HI(0:npix-1,nmaps),model_T(0:npix-1))
   allocate(new_T(0:npix-1),T_map(0:npix-1,nmaps),map(bands),rms(bands))
   allocate(rmss(0:npix-1,nmaps,bands), cov(0:npix-1,nmaps,bands),norm(bands),s(bands))
-  allocate(y(bands),freq(bands),sum1(bands),sum2(bands),amps(bands),clamps(bands),freqs(bands))
+  allocate(y(bands),freq(bands),amps(0:npix-1,bands),clamps(0:npix-1,bands),freqs(bands),amp_map(0:npix-1,nmaps,bands))
 
   ! Open and read frequencies, map, and rms map names
 
@@ -169,45 +169,27 @@ program dust_hi_fit
   
   ! Initializing
   !--------------
-  sum1 = 0.d0
-  sum2 = 0.d0
 
-  write(*,*) 'Initial amplitudes: '
-  write(*,*) '-------------------'
+
+  write(*,*) 'Initializing amplitudes: '
+  write(*,*) '------------------------ '
   
   do i=0,npix-1
     if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
        cycle
     else
        do j=1,bands
-!          cov(i,1,j)   = rmss(i,1,j)**2.d0
-!          model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,new_T(i))
-!          sum1(j)      = sum1(j) + (maps(i,1,j)*cov(i,1,j)*model(i,1,j))
-!          sum2(j)      = sum2(j) + (model(i,1,j)**2.d0)*cov(i,1,j)
-!          norm(j)      = norm(j) + cov(i,1,j)*model(i,1,j)**2.d0
+          model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,new_T(i))
+          amps(i,j)    = (maps(i,1,j)*cov(i,1,j)*model(i,1,j))/(model(i,1,j)**2.d0*cov(i,1,j))
        end do
     endif
   end do
 
-  do j=1,bands
-     amps(j) = sum1(j)/sum2(j)
-     norm(j) = sqrt(pix*norm(j))
-  end do
-
   clamps = amps
 
-  do n=1,bands
-    write(*,*) freqs(n) // ': ', clamps(n)
-  end do
-
-  write(*,*) '----------------------------------'
-  write(*,*) ''
-
-  filename      = trim(output) // 'amplitudes.dat'
   chi_file      = trim(output) // 'chi_sq.dat'
   amp_dist      = trim(output) // 'amplitude_distribution.dat'
 
-  open(35, file = trim(filename))
   open(36, file = trim(chi_file))
 
   !------------------------------------------------------------
@@ -248,11 +230,6 @@ program dust_hi_fit
      write(*,*) T_sum/pix
      write(*,*) ''
 
-     write(*,*) 'Amplitudes: '
-     do n=1,bands
-        write(*,*) freqs(n) // ': ', clamps(n)
-     end do
-
      ! --------------------------------------------------
 
      ! Write result maps
@@ -266,26 +243,17 @@ program dust_hi_fit
         else if (m .gt. 999) then
            write(number, 13) m
         endif
-
+        amp_map(:,1,:) = clamps
         fitsname   = trim(output) // 'dust_Td_' // trim(number) // '.fits'
         write(*,*) '----------------------------------'
         call write_maps(npix,nmaps,header)
      end if
     
-     write(35,*) clamps(:)
      write(36,'(1(E17.8))') chisq
      write(*,*) '----------------------------------'
      write(*,*) ''
 
   end do
-
-!  open(37, file = trim(amp_dist))
-!  do n=1,1000
-!     do j=1,bands
-!        s(j) = clamps(j) + rand_normal(0.d0,1.d0)/norm(j)
-!     end do
-!     write(37,'(6(E17.8))') s(1), s(2), s(3), s(4), s(5), s(6)
-!  end do
 
   deallocate(maps,HI,norm)
   deallocate(model,rmss,cov)
@@ -326,15 +294,7 @@ contains
 
     integer(i4b), intent(in)                  :: npix
     real(dp), dimension(0:npix-1), intent(in) :: T
-    real(dp), dimension(bands)                :: sample_A, tau, r
-    real(dp), dimension(2)                    :: a
-    real(dp)                                  :: chisq2, p, num
-    integer(i4b)                              :: b
-
-    a(1) = 1.d0
-
-    sum1 = 0.d0
-    sum2 = 0.d0
+    real(dp), dimension(0:npix-1,bands)       :: sample_A, tau
 
     do i=0,npix-1
        if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
@@ -342,13 +302,11 @@ contains
        else
           do j=1,bands
              model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,T(i))
-             sum1(j)      = sum1(j) + (maps(i,1,j)*model(i,1,j)*cov(i,1,j))
-             sum2(j)      = sum2(j) + (model(i,1,j)**2.d0*cov(i,1,j))
+             tau(i,j)     = (maps(i,1,j)*cov(i,1,j)*model(i,1,j))/(model(i,1,j)**2.d0*cov(i,1,j))
           end do
        endif
     end do
 
-    tau = sum1/sum2
 
     sample_A = tau
 
@@ -360,10 +318,9 @@ contains
     integer(i4b), intent(in)                     :: npix
     real(dp), dimension(0:npix-1), intent(in)    :: T
     real(dp), dimension(0:npix-1)                :: create_T
-    ! real(dp), dimension(niter+1)                 :: chi, tump, accept, prob
     real(dp), dimension(bands)                   :: y,covs,test
     real(dp), dimension(2)                       :: a
-    real(dp)                                     :: x,temp,r,b,c,num!,naccept
+    real(dp)                                     :: x,temp,r,b,c,num
 
     do i=0,npix-1
        if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
@@ -372,25 +329,18 @@ contains
           x = 0.d0
           do j=1,bands
              y(j) = maps(i,1,j)
-!             covs(j) = cov(i,1,j)
-             x = x + (clamps(j)*model(i,1,j) - y(j))**2.d0
+             x = x + (clamps(i,j)*model(i,1,j) - y(j))**2.d0
           end do
 
           temp = T(i)
           a(1) = 1.d0
           c    = x
 
-          ! prob(1)   = 1.d0
-          ! chi(1)    = x
-          ! tump(1)   = temp
-          ! accept(1) = 0.d0
-          ! naccept   = 0
-
           do l=1,niter
              r    = rand_normal(temp,dust_T_sigma)
              test = 0.d0
              do j=1,bands
-                test(j) = clamps(j)*HI(i,1)*planck(freq(j)*1.d9,r)
+                test(j) = clamps(i,j)*HI(i,1)*planck(freq(j)*1.d9,r)
              end do
              b    = sum((test-y)**2.d0)
              a(2) = exp(-b+c)
@@ -402,33 +352,9 @@ contains
                 if (r .lt. 35 .and. r .gt. 10) then
                    temp  = r
                    c     = b
-                   ! naccept = naccept + 1
                 end if
              end if
-
-             ! if (i == 600) then
-             !  prob(l+1)   = p 
-             !  chi(l+1)    = c
-             !  tump(l+1)   = temp
-             !  accept(l+1) = naccept/l
-             ! end if
           end do
-
-          ! if (i == 600) then
-
-          !   open(40,file = trim(output) // 'prob.dat')
-          !   open(41,file = trim(output) // 'chi.dat')
-          !   open(42,file = trim(output) // 'temps.dat')
-          !   open(43,file = trim(output) // 'accept.dat')
-
-          !   do l = 1,niter+1
-          !     write(40,*) prob(l)
-          !     write(41,*) chi(l)
-          !     write(42,*) tump(l)
-          !     write(43,*) accept(l)
-          !   end do
-
-          ! end if
           create_T(i)  = temp
        endif
     end do
@@ -436,10 +362,10 @@ contains
 
   function compute_chisq(T,amp)
     implicit none
-    real(dp), dimension(0:npix-1), intent(in) :: T
-    real(dp), dimension(bands),    intent(in) :: amp
-    real(dp)                                  :: chi
-    real(dp)                                  :: compute_chisq
+    real(dp), dimension(0:npix-1), intent(in)       :: T
+    real(dp), dimension(0:npix-1,bands), intent(in) :: amp
+    real(dp)                                        :: chi
+    real(dp)                                        :: compute_chisq
 
     chi = 0.d0
     do j=1,bands
@@ -447,7 +373,7 @@ contains
           if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
              cycle
           else
-             chi = chi + (maps(i,1,j) - amp(j)*model(i,1,j))**2.d0/cov(i,1,j)
+             chi = chi + (maps(i,1,j) - amp(i,j)*model(i,1,j))**2.d0/cov(i,1,j)
           end if
        end do
     end do
@@ -462,24 +388,26 @@ contains
     integer(i4b), intent(in)                        :: npix, nmaps
     integer(i4b)                                    :: y, b
     character(len=80),  dimension(180), intent(in)  :: header
-    character(len=80)                               :: file1, file2, file3
+    character(len=80)                               :: file1, file2, file3, file4
     real(dp), dimension(0:npix-1,nmaps,bands)       :: modl, resid
 
     write(*,*) "Writing maps!"
 
     file1 = trim(output) // 'dust_Td_' // trim(number) // '.fits'
 
-    do y=0,npix-1
-       modl(y,1,:)  = amps(:)*model(y,1,:)
-       resid(y,1,:) = maps(y,1,:) - modl(y,1,:)
+    do i=0,npix-1
+       modl(i,1,:)  = amps(i,:)*model(i,1,:)
+       resid(i,1,:) = maps(i,1,:) - modl(i,1,:)
     end do
 
     call write_bintab(T_map, npix, nmaps, header, nlheader, file1)
-    do y=1,bands
-       file2 = trim(output) // 'model_'// trim(freqs(y)) // '_' // trim(number) // '.fits'
-       file3 = trim(output) // 'resid_'// trim(freqs(y)) // '_' // trim(number) // '.fits'
-       call write_bintab(modl(:,:,y), npix, nmaps, header, nlheader, file2)
-       call write_bintab(resid(:,:,y), npix, nmaps, header, nlheader, file3)
+    do j=1,bands
+       file2 = trim(output) // 'model_'// trim(freqs(j)) // '_' // trim(number) // '.fits'
+       file3 = trim(output) // 'resid_'// trim(freqs(j)) // '_' // trim(number) // '.fits'
+       file3 = trim(output) // 'amps_' // trim(freqs(j)) // '_' // trim(number) // '.fits'
+       call write_bintab(modl(:,:,j), npix, nmaps, header, nlheader, file2)
+       call write_bintab(resid(:,:,j), npix, nmaps, header, nlheader, file3)
+       call write_bintab(amp_map(:,:,j), npix, nmaps, header, nlheader, file4)
     end do
 
   end subroutine write_maps
