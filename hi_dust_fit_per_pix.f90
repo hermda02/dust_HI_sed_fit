@@ -406,12 +406,11 @@ contains
     real(dp)                                        :: sumx,sumx2
 
     sumx  = sum(freq(:)*1.0d9)
-
+    sumx2 = sum((freq(:)*1.0d9)**2.d0)
     write(*,*) 'Sum_x'
     write(*,*) sumx
     write(*,*) 'Sum_x2'
     write(*,*) sumx2
-    sumx2 = sum((freq(:)*1.0d9)**2.d0)
     sumy  = 0.d0
     do i=0,npix-1
        if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
