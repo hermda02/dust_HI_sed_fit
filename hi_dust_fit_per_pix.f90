@@ -193,8 +193,6 @@ program dust_hi_fit
     endif
   end do
 
-  write(*,*) amps(1,:)
-
   clamps = amps
 
   beta_map(:,1) = calc_beta(clamps,npix)
@@ -411,18 +409,14 @@ contains
 
 
     logfreq = log10(freq(:)*1e9)
-    write(*,*) logfreq
-    stop
-
-
-    sumx  = sum(log10(freq(:)*1.0d9))
-    sumx2 = sum(log10((freq(:)*1.0d9)**2.d0))
+    sumx  = sum(logfreq(:))
+    sumx2 = sum(logfreq(:)**2.d0)
     write(*,*) 'Sum_x'
     write(*,*) sumx
     write(*,*) 'Sum_x2'
     write(*,*) sumx2
     sumy  = 0.d0
-
+    stop
 
 
     do i=0,npix-1
