@@ -319,11 +319,12 @@ contains
           do j=1,bands
              model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,T(i))
              tau(i,j)     = (maps(i,1,j)*cov(i,1,j)*model(i,1,j))/(model(i,1,j)**2.d0*cov(i,1,j))
-             if (tau(i,j) .lt. 0) tau(i,j) = 0.d0
+             if (tau(i,j) .lt. 0) write(*,*) model(i,1,j)
           end do
        endif
     end do
 
+    stop
 
     sample_A = tau
 
@@ -426,7 +427,7 @@ contains
          sumxy(i) = sum((logfreq(:)*tamp(:)))
          calc_beta(i) = (bands * sumxy(i) - sumx*sumy(i))/(bands*sumx2 - sumx**2.d0)
          ! write(*,*) calc_beta(i)
-         if (isnan(calc_beta(i))) write(*,*) i
+         if (isnan(calc_beta(i))) write(*,*) 
        end if
     end do
 
