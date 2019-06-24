@@ -20,7 +20,7 @@ program dust_hi_fit
   character(len=4)                :: number
 
   real(dp), allocatable, dimension(:)          :: model_T, new_T, y, freq, norm, s
-  real(dp), allocatable, dimension(:,:)        :: HI, T_map,  sum1, sum2, amps, clamps
+  real(dp), allocatable, dimension(:,:)        :: HI, T_map,  sum1, sum2, amps, clamps,beta_map
   real(dp), allocatable, dimension(:,:,:)      :: maps, model, rmss, cov, amp_map
   character(len=80), dimension(180)            :: header
   character(len=100),allocatable, dimension(:) :: freqs, map, rms
@@ -78,7 +78,7 @@ program dust_hi_fit
 
   allocate(maps(0:npix-1,nmaps,bands),model(0:npix-1,nmaps,bands),HI(0:npix-1,nmaps),model_T(0:npix-1))
   allocate(new_T(0:npix-1),T_map(0:npix-1,nmaps),map(bands),rms(bands))
-  allocate(rmss(0:npix-1,nmaps,bands), cov(0:npix-1,nmaps,bands),norm(bands),s(bands))
+  allocate(rmss(0:npix-1,nmaps,bands), cov(0:npix-1,nmaps,bands),beta_map(0:npix-1,nmaps),norm(bands),s(bands))
   allocate(y(bands),freq(bands),amps(0:npix-1,bands),clamps(0:npix-1,bands),freqs(bands),amp_map(0:npix-1,nmaps,bands))
 
   ! Open and read frequencies, map, and rms map names
@@ -244,7 +244,8 @@ program dust_hi_fit
         else if (m .gt. 999) then
            write(number, 13) m
         endif
-        amp_map(:,1,:) = clamps
+        beta_map(:,1) = calc_beta(clamps,npix)
+        amp_map(:,1,:)  = clamps
         fitsname   = trim(output) // 'dust_Td_' // trim(number) // '.fits'
         write(*,*) '----------------------------------'
         call write_maps(npix,nmaps,header)
@@ -383,18 +384,39 @@ contains
 
   end function compute_chisq
 
+  function calc_beta(ampls,npix)
+    implicit none
+
+    integer(i4b), intent(in)                     :: npix
+    real(dp), dimension(0:npix-1,bands)          :: ampls
+    real(dp), dimension(0:npix-1)                :: sumxy,sumy,calc_beta
+    real(dp)                                     :: sumx,sumx2
+
+    sumx  = sum(freq(:)*1.0d9)
+    sumx2 = sum((freq(:)*1.0d9)**2.d0)
+    sumy  = 0.d0
+
+    do i=0,npix-1
+      sumy(i)  = sum(ampls(i,:))
+      sumxy(i) = sum(freq(:)*ampls(i,:))
+      calc_beta(i) = (bands * sumxy(i) - sumx*sumy(i))/(bands*sumx2 - sumx**2.d0)
+    end do
+
+  end function calc_beta
+
   subroutine write_maps(npix,nmaps,header)
     ! Outputs the temperature map, the modeled map, and the residual map
     implicit none
     integer(i4b), intent(in)                        :: npix, nmaps
     integer(i4b)                                    :: y, b
     character(len=80),  dimension(180), intent(in)  :: header
-    character(len=80)                               :: file1, file2, file3, file4
+    character(len=80)                               :: file1, file2, file3, file4,file5
     real(dp), dimension(0:npix-1,nmaps,bands)       :: modl, resid
 
     write(*,*) "Writing maps!"
 
     file1 = trim(output) // 'dust_Td_' // trim(number) // '.fits'
+    file2 = trim(output) // 'dust_beta_' // trim(number) // '.fits'
 
     do i=0,npix-1
        modl(i,1,:)  = amps(i,:)*model(i,1,:)
@@ -402,13 +424,14 @@ contains
     end do
 
     call write_bintab(T_map, npix, nmaps, header, nlheader, file1)
+    call write_bintab(beta_map, npix, nmaps, header, nlheader, file2)
     do j=1,bands
-       file2 = trim(output) // 'model_'// trim(freqs(j)) // '_' // trim(number) // '.fits'
-       file3 = trim(output) // 'resid_'// trim(freqs(j)) // '_' // trim(number) // '.fits'
-       file3 = trim(output) // 'amps_' // trim(freqs(j)) // '_' // trim(number) // '.fits'
-       call write_bintab(modl(:,:,j), npix, nmaps, header, nlheader, file2)
-       call write_bintab(resid(:,:,j), npix, nmaps, header, nlheader, file3)
-       call write_bintab(amp_map(:,:,j), npix, nmaps, header, nlheader, file4)
+       file3 = trim(output) // 'model_'// trim(freqs(j)) // '_' // trim(number) // '.fits'
+       file4 = trim(output) // 'resid_'// trim(freqs(j)) // '_' // trim(number) // '.fits'
+       file5 = trim(output) // 'amps_' // trim(freqs(j)) // '_' // trim(number) // '.fits'
+       call write_bintab(modl(:,:,j), npix, nmaps, header, nlheader, file3)
+       call write_bintab(resid(:,:,j), npix, nmaps, header, nlheader, file4)
+       call write_bintab(amp_map(:,:,j), npix, nmaps, header, nlheader, file5)
     end do
 
   end subroutine write_maps
