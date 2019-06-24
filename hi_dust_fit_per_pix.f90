@@ -411,6 +411,7 @@ contains
          sumy(i)  = sum(ampls(i,:))
          sumxy(i) = sum(freq(:)*ampls(i,:))
          calc_beta(i) = (bands * sumxy(i) - sumx*sumy(i))/(bands*sumx2 - sumx**2.d0)
+         write(*,*) calc_beta(i)
        end if
     end do
 
