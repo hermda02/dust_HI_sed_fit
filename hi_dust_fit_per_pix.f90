@@ -420,12 +420,12 @@ contains
 
 
     do i=0,npix-1
-      tamp = ampls(i,:)
+      tamp = log10(ampls(i,:))
        if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
           cycle
        else
-         sumy(i)  = sum(log10(tamp))
-         sumxy(i) = sum(log10(freq(:)*ampls(i,:)))
+         sumy(i)  = sum(tamp(:))
+         sumxy(i) = sum((logfreq(:)*tamp(:)))
          calc_beta(i) = (bands * sumxy(i) - sumx*sumy(i))/(bands*sumx2 - 2.d0*sumx)
          write(*,*) calc_beta(i)
        end if
