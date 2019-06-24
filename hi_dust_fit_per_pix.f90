@@ -406,15 +406,11 @@ contains
     real(dp), dimension(bands)                      :: tamp,xy,logfreq
     real(dp)                                        :: sumx,sumx2
 
-
     logfreq = log10(freq(:)*1e9)
-    sumx  = sum(logfreq(:))
-    sumx2 = sum(logfreq(:)**2.d0)
-    write(*,*) 'Sum_x'
-    write(*,*) sumx
-    write(*,*) 'Sum_x2'
-    write(*,*) sumx2
-    sumy  = 0.d0
+    sumx    = sum(logfreq(:))
+    sumx2   = sum(logfreq(:)**2.d0)
+    sumy    = 0.d0
+
     do i=0,npix-1
       tamp = log10(ampls(i,:))
        if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
