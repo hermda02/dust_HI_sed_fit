@@ -19,7 +19,7 @@ program dust_hi_fit
   character(len=80), dimension(1) :: line2
   character(len=4)                :: number
 
-  real(dp), allocatable, dimension(:)          :: model_T, new_T, y, freq, norm, s, beta
+  real(dp), allocatable, dimension(:)          :: model_T, new_T, y, freq, norm, s
   real(dp), allocatable, dimension(:,:)        :: HI, T_map,  sum1, sum2, amps, clamps,beta_map
   real(dp), allocatable, dimension(:,:,:)      :: maps, model, rmss, cov, amp_map
   character(len=80), dimension(180)            :: header
@@ -76,10 +76,14 @@ program dust_hi_fit
   i     = getsize_fits(mapHI,nside=nside,ordering=ordering,nmaps=nmaps)
   npix  = nside2npix(nside)
 
-  allocate(maps(0:npix-1,nmaps,bands),model(0:npix-1,nmaps,bands),HI(0:npix-1,nmaps),model_T(0:npix-1))
-  allocate(new_T(0:npix-1),T_map(0:npix-1,nmaps),map(bands),rms(bands),beta(npix))
-  allocate(rmss(0:npix-1,nmaps,bands), cov(0:npix-1,nmaps,bands),beta_map(0:npix-1,nmaps),norm(bands),s(bands))
-  allocate(y(bands),freq(bands),amps(0:npix-1,bands),clamps(0:npix-1,bands),freqs(bands),amp_map(0:npix-1,nmaps,bands))
+  allocate(maps(0:npix-1,nmaps,bands))
+  allocate(cov(0:npix-1,nmaps,bands))
+  allocate(model(0:npix-1,nmaps,bands))
+  allocate(rmss(0:npix-1,nmaps,bands))
+  allocate(amp_map(0:npix-1,nmaps,bands))
+  allocate(amps(0:npix-1,bands), clamps(0:npix-1,bands), T_map(0:npix-1,nmaps), HI(0:npix-1,nmaps), beta_map(0:npix-1,nmaps))
+  allocate(new_T(0:npix-1),model_T(0:npix-1))
+  allocate(y(bands),freq(bands),freqs(bands),map(bands),rms(bands),norm(bands),s(bands))
 
   ! Open and read frequencies, map, and rms map names
 
@@ -190,6 +194,8 @@ program dust_hi_fit
 
   clamps = amps
 
+  beta_map(:,1) = calc_beta(clamps,npix)
+
   chi_file      = trim(output) // 'chi_sq.dat'
   amp_dist      = trim(output) // 'amplitude_distribution.dat'
 
@@ -266,8 +272,6 @@ program dust_hi_fit
 
   end do
 
-  deallocate(maps,HI,norm)
-  deallocate(model,rmss,cov)
   close(35)
   close(36)
   close(37)
@@ -402,6 +406,11 @@ contains
     real(dp)                                        :: sumx,sumx2
 
     sumx  = sum(freq(:)*1.0d9)
+
+    write(*,*) 'Sum_x'
+    write(*,*) sumx
+    write(*,*) 'Sum_x2'
+    write(*,*) sumx2
     sumx2 = sum((freq(:)*1.0d9)**2.d0)
     sumy  = 0.d0
     do i=0,npix-1
