@@ -213,17 +213,17 @@ program dust_hi_fit
      chisq   = compute_chisq(new_T,clamps)
 
      T_sum    = 0.d0
-     ! beta_sum = 0.d0
+     beta_sum = 0.d0
      beta_map(:,1) = calc_beta(clamps,npix)
 
      do n=0,npix-1
         if (abs((HI(n,1)-missval)/missval) < 1.d-8) then
            T_map(n,1)    = new_T(n)
            T_sum         = T_sum + T_map(n,1)
-           ! beta_sum      = beta_sum + beta_map(n,1)
+           beta_sum      = beta_sum + beta_map(n,1)
         else
            T_map(n,1)    = missval
-           ! beta_map(n,1) = missval
+           beta_map(n,1) = missval
         end if
      end do
 
@@ -235,9 +235,9 @@ program dust_hi_fit
      write(*,*) T_sum/pix
      write(*,*) ''
 
-     ! write(*,*) 'Mean dust beta: '
-     ! write(*,*) beta_sum/pix
-     ! write(*,*) ''
+     write(*,*) 'Mean dust beta: '
+     write(*,*) beta_sum/pix
+     write(*,*) ''
 
      ! --------------------------------------------------
 
@@ -394,10 +394,10 @@ contains
   function calc_beta(ampls,npix)
     implicit none
 
-    integer(i4b), intent(in)                     :: npix
-    real(dp), dimension(0:npix-1,bands)          :: ampls
-    real(dp), dimension(0:npix-1)                :: sumxy,sumy,calc_beta
-    real(dp)                                     :: sumx,sumx2
+    integer(i4b), intent(in)                        :: npix
+    real(dp), dimension(0:npix-1,bands), intent(in) :: ampls
+    real(dp), dimension(0:npix-1)                   :: sumxy,sumy,calc_beta
+    real(dp)                                        :: sumx,sumx2
 
     sumx  = sum(freq(:)*1.0d9)
     sumx2 = sum((freq(:)*1.0d9)**2.d0)
