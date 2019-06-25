@@ -385,9 +385,9 @@ contains
              cycle
           else
              model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,T(i))
-             write(*,*) model(i,1,j)
+             write(*,*) amp(i,j)*model(i,1,j)
              write(*,*) maps(i,1,j)
-             write(*,*) amp(i,j)
+  !           write(*,*) amp(i,j)
              chi = chi + (maps(i,1,j) - amp(i,j)*model(i,1,j))**2.d0/cov(i,1,j)
              write(*,*) (maps(i,1,j) - amp(i,j)*model(i,1,j))
              write(*,*) (maps(i,1,j) - amp(i,j)*model(i,1,j))**2.d0
