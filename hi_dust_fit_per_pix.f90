@@ -372,11 +372,15 @@ contains
                    temp  = r
                    c     = b
                    naccept = naccept + 1
+                 if (i == 600) then
+                   prob(l+1)   = p 
+                 end if
                 end if
+             else
+                prob(l+1) = 1
              end if
 
              if (i == 600) then
-              prob(l+1)   = p 
               chi(l+1)    = c
               tump(l+1)   = temp
               accept(l+1) = naccept/l
