@@ -141,7 +141,7 @@ program dust_hi_fit
      new_T(i) = dust_T_init
   end do
 
-  niter = 5000
+  niter = 10000
   pix  = 0
 
   ! Mask maps
