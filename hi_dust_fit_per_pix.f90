@@ -331,7 +331,8 @@ contains
     real(dp), dimension(0:npix-1)                :: sample_T
     real(dp), dimension(bands)                   :: y,covs,test
     real(dp), dimension(2)                       :: a
-    real(dp)                                     :: x,temp,r,b,c,num
+    real(dp)                                     :: x,temp,r,b,c,num,naccept
+    real(dp), dimension(niter+1)                 :: chi, tump, accept, prob
 
     do i=0,npix-1
        if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
@@ -346,6 +347,13 @@ contains
           temp = T(i)
           a(1) = 1.d0
           c    = x
+
+          prob(1)   = 1.d0
+          chi(1)    = x
+          tump(1)   = temp
+          accept(1) = 0.d0
+          naccept   = 0
+
 
           do l=1,niter
              r    = rand_normal(temp,dust_T_sigma)
@@ -363,9 +371,32 @@ contains
                 if (r .lt. 35 .and. r .gt. 10) then
                    temp  = r
                    c     = b
+                   naccept = naccept + 1
                 end if
              end if
+
+             if (i == 600) then
+              prob(l+1)   = p 
+              chi(l+1)    = c
+              tump(l+1)   = temp
+              accept(l+1) = naccept/l
+             end if
           end do
+          if (i == 600) then
+
+            open(40,file = trim(output) // 'prob.dat')
+            open(41,file = trim(output) // 'chi.dat')
+            open(42,file = trim(output) // 'temps.dat')
+            open(43,file = trim(output) // 'accept.dat')
+
+            do l = 1,niter+1
+              write(40,*) prob(l)
+              write(41,*) chi(l)
+              write(42,*) tump(l)
+              write(43,*) accept(l)
+            end do
+
+          end if
           sample_T(i)  = temp
        endif
     end do
@@ -380,23 +411,14 @@ contains
 
     chi = 0.d0
     do j=1,bands
-       do i=0,15
+       do i=0,npix-1
           if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
              cycle
           else
              model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,T(i))
-             write(*,*) amp(i,j)*model(i,1,j)
-             write(*,*) maps(i,1,j)
-  !           write(*,*) amp(i,j)
              chi = chi + (maps(i,1,j) - amp(i,j)*model(i,1,j))**2.d0/cov(i,1,j)
-             write(*,*) (maps(i,1,j) - amp(i,j)*model(i,1,j))
-             write(*,*) (maps(i,1,j) - amp(i,j)*model(i,1,j))**2.d0
-             write(*,*) (maps(i,1,j) - amp(i,j)*model(i,1,j))**2.d0/cov(i,1,j)
-!             write(*,*) chi
-             write(*,*) '-------------------------'
           end if
        end do
-       stop
     end do
 
     compute_chisq = (chi/(pix*bands))
