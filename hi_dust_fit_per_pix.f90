@@ -380,15 +380,18 @@ contains
 
     chi = 0.d0
     do j=1,bands
-       do i=0,npix-1
+       do i=0,50
           if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
              cycle
           else
              model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,T(i))
              chi = chi + (maps(i,1,j) - amp(i,j)*model(i,1,j))**2.d0/cov(i,1,j)
+             write(*,*) (maps(i,1,j) - amp(i,j)*model(i,1,j))
+             write(*,*) (maps(i,1,j) - amp(i,j)*model(i,1,j))**2.d0
+             write(*,*) (maps(i,1,j) - amp(i,j)*model(i,1,j))**2.d0/cov(i,1,j)
+             write(*,*) chi
           end if
        end do
-       write(*,*) chi
     end do
 
     compute_chisq = (chi/(pix*bands))
