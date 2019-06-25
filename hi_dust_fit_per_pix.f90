@@ -66,10 +66,10 @@ program dust_hi_fit
 
   call system('mkdir -p ./' // trim(output))
 
-  mapfile  = 'sed_maps_v3.txt'
-  rmsfile  = 'sed_rms_v3.txt'
-  freqfile = 'sed_freqs_v3.txt'
-  bandfile = 'sed_bands_v3.txt'
+  mapfile  = 'sed_maps_v2.txt'
+  rmsfile  = 'sed_rms_v2.txt'
+  freqfile = 'sed_freqs_v2.txt'
+  bandfile = 'sed_bands_v2.txt'
   
   mapHI = trim(data) // 'HI_vel_filter_60arcmin_0064.fits'
 
@@ -114,7 +114,6 @@ program dust_hi_fit
      call read_bintab(map(i), maps(:,:,i), npix, nmaps, nullval, anynull, header=header)
      call read_bintab(rms(i), rmss(:,:,i), npix, nmaps, nullval, anynull, header=header)
   end do
-     
 
   ! Initialize header for writing maps
   nlheader = size(header)
@@ -161,8 +160,6 @@ program dust_hi_fit
       end if
     end do
   end do
-
-  write(*,*) pix
 
   !-----------------------------------------------------------------------------------------------------|  
   ! Here we calculate what the amplitude per map, and temperature per pixel should be for the best fit  |
@@ -251,7 +248,7 @@ program dust_hi_fit
      ! --------------------------------------------------
 
      ! Write result maps
-     if ( mod(m,10) .EQ. 0) then
+     if ( mod(m,5) .EQ. 0) then
         if (m .lt. 10) then
            write(number,10) m
         else if (m .gt. 9 .and. m .lt. 100) then
@@ -303,7 +300,6 @@ contains
           c= mean+stdev*r*sin(theta)
     end if
   end function
-
 
   function sample_A(T,npix)
     implicit none
@@ -390,6 +386,7 @@ contains
           else
              model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,T(i))
              chi = chi + (maps(i,1,j) - amp(i,j)*model(i,1,j))**2.d0/cov(i,1,j)
+             write(*,*) chi
           end if
        end do
     end do
@@ -433,7 +430,7 @@ contains
     integer(i4b), intent(in)                        :: npix, nmaps
     integer(i4b)                                    :: y, b
     character(len=80),  dimension(180), intent(in)  :: header
-    character(len=80)                               :: file1, file2, file3, file4,file5
+    character(len=80)                               :: file1, file2, file3, file4, file5
     real(dp), dimension(0:npix-1,nmaps,bands)       :: modl, resid
 
     write(*,*) "Writing maps!"
@@ -448,6 +445,7 @@ contains
 
     call write_bintab(T_map, npix, nmaps, header, nlheader, file1)
     call write_bintab(beta_map, npix, nmaps, header, nlheader, file2)
+    write(*,*) 'no issue'
     do j=1,bands
        file3 = trim(output) // 'model_'// trim(freqs(j)) // '_' // trim(number) // '.fits'
        file4 = trim(output) // 'resid_'// trim(freqs(j)) // '_' // trim(number) // '.fits'
@@ -455,6 +453,7 @@ contains
        call write_bintab(modl(:,:,j), npix, nmaps, header, nlheader, file3)
        call write_bintab(resid(:,:,j), npix, nmaps, header, nlheader, file4)
        call write_bintab(amp_map(:,:,j), npix, nmaps, header, nlheader, file5)
+       write(*,*) 'issue?'
     end do
 
   end subroutine write_maps
