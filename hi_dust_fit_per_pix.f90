@@ -386,7 +386,7 @@ contains
           else
              model(i,1,j) = HI(i,1)*planck(freq(j)*1.d9,T(i))
              chi = chi + (maps(i,1,j) - amp(i,j)*model(i,1,j))**2.d0/cov(i,1,j)
-             write(*,*) chi
+       write(*,*) chi
           end if
        end do
     end do
@@ -418,7 +418,7 @@ contains
          sumxy(i) = sum((logfreq(:)*tamp(:)))
          calc_beta(i) = (bands * sumxy(i) - sumx*sumy(i))/(bands*sumx2 - sumx**2.d0)
          ! write(*,*) calc_beta(i)
-         if (isnan(calc_beta(i))) write(*,*) 
+         ! if (isnan(calc_beta(i))) write(*,*) 
        end if
     end do
 
@@ -445,7 +445,6 @@ contains
 
     call write_bintab(T_map, npix, nmaps, header, nlheader, file1)
     call write_bintab(beta_map, npix, nmaps, header, nlheader, file2)
-    write(*,*) 'no issue'
     do j=1,bands
        file3 = trim(output) // 'model_'// trim(freqs(j)) // '_' // trim(number) // '.fits'
        file4 = trim(output) // 'resid_'// trim(freqs(j)) // '_' // trim(number) // '.fits'
@@ -453,7 +452,6 @@ contains
        call write_bintab(modl(:,:,j), npix, nmaps, header, nlheader, file3)
        call write_bintab(resid(:,:,j), npix, nmaps, header, nlheader, file4)
        call write_bintab(amp_map(:,:,j), npix, nmaps, header, nlheader, file5)
-       write(*,*) 'issue?'
     end do
 
   end subroutine write_maps
