@@ -155,6 +155,7 @@ program dust_hi_fit
         amps(i,:)      = missval
         clamps(i,:)    = missval
         amp_map(i,:,:) = missval
+        model(i,:,:)   = missval
       else
         pix            = pix + 1
       end if
@@ -341,7 +342,7 @@ contains
           x = 0.d0
           do j=1,bands
              y(j) = maps(i,1,j)
-             x    = x + (clamps(i,j)*model(i,1,j) - y(j))**2.d0
+             x    = x + (clamps(i,j)*model(i,1,j) - y(j))**2.d0/cov(i,1,j)
           end do
 
           temp = T(i)
@@ -358,10 +359,11 @@ contains
           do l=1,niter
              r    = rand_normal(temp,dust_T_sigma)
              test = 0.d0
+             b    = 0.d0
              do j=1,bands
                 test(j) = clamps(i,j)*HI(i,1)*planck(freq(j)*1.d9,r)
+                b       = b + (test(j) - y(j))**2.d0/cov(i,1,j)
              end do
-             b    = sum((test-y)**2.d0)
              a(2) = exp(-b+c)
              p    = minval(a)
 
