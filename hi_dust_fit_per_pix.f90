@@ -342,7 +342,7 @@ contains
           x = 0.d0
           do j=1,bands
              y(j) = maps(i,1,j)
-             x    = x + (clamps(i,j)*model(i,1,j) - y(j))**2.d0/cov(i,1,j)
+             x    = x + (clamps(i,j)*model(i,1,j) - y(j))**2.d0!/cov(i,1,j)
           end do
 
           temp = T(i)
@@ -362,7 +362,7 @@ contains
              b    = 0.d0
              do j=1,bands
                 test(j) = clamps(i,j)*HI(i,1)*planck(freq(j)*1.d9,r)
-                b       = b + (test(j) - y(j))**2.d0/cov(i,1,j)
+                b       = b + (test(j) - y(j))**2.d0!/cov(i,1,j)
              end do
              a(2) = exp(-b+c)
              p    = minval(a)
@@ -453,8 +453,6 @@ contains
          sumy(i)  = sum(tamp(:))
          sumxy(i) = sum((logfreq(:)*tamp(:)))
          calc_beta(i) = (bands * sumxy(i) - sumx*sumy(i))/(bands*sumx2 - sumx**2.d0)
-         ! write(*,*) calc_beta(i)
-         ! if (isnan(calc_beta(i))) write(*,*) 
        end if
     end do
 
