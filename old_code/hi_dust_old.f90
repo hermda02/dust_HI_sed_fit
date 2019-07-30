@@ -65,12 +65,12 @@ program dust_hi_fit
 
   call system('mkdir -p ./' // trim(output))
 
-  map1  = 'offset_hi/npipe6v20_353-5_zero_lvl.fits'
-  map2  = 'offset_hi/npipe6v20_545-1_zero_lvl.fits'
-  map3  = 'offset_hi/npipe6v20_857-1_zero_lvl.fits'
-  map4  = 'offset_hi/DIRBE_240micron_zero_lvl.fits'
-  map5  = 'offset_hi/DIRBE_140micron_zero_lvl.fits'
-  map6  = trim(data) // 'DIRBE_100micron_1deg_h064_gained.fits'
+  map1  = '../dust_data/sed_data/npipe6v20_353-5_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
+  map2  = '../dust_data/sed_data/npipe6v20_545-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
+  map3  = '../dust_data/sed_data/npipe6v20_857-1_bmap_QUADCOR_n0064_60arcmin_MJy_calibrated.fits'
+  map4  = '../dust_data/sed_data/DIRBE_240micron_1deg_h064_calibrated.fits'
+  map5  = '../dust_data/sed_data/DIRBE_140micron_1deg_h064_calibrated.fits'
+  map6  = '../dust_data/sed_data/DIRBE_100micron_1deg_h064_calibrated.fits'
   mapHI = trim(data) // 'HI_vel_filter_60arcmin_0064.fits'
   mask  = trim(data) // 'HI_mask.fits'
   rms1  = trim(data) // 'npipe6v20_353-5_n0064_rms_MJy.fits'

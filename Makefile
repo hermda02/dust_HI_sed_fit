@@ -7,9 +7,9 @@ FITSDIR = -L/mn/stornext/u3/hke/local/lib -lcfitsio
 LAPACK  = -L/mn/stornext/u3/hke/local/lib -llapack -lblas
 HEALPIX = -L/mn/stornext/u3/hke/local/lib -lhealpix
 HEALINC = -I/mn/stornext/u3/hke/local/include
-OUTPUT  = fit_dust_hi
+OUTPUT  = fit_dust_hi_perp
 
-OBJS    = hi_dust_fit.o
+OBJS    = hi_dust_fit_per_pix.o
 
 fit_dust_hi: $(OBJS)
 	$(FC) $(OBJS) $(HEALPIX) $(FITSDIR) -fopenmp -o $(OUTPUT)
@@ -21,4 +21,4 @@ fit_dust_hi: $(OBJS)
 # Cleaning command
 .PHONY: clean
 clean:
-	rm *.o *~ fit_dust_hi
+	rm *.o *~ fit_dust_hi_perp

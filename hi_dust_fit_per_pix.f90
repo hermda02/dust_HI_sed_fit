@@ -66,10 +66,10 @@ program dust_hi_fit
 
   call system('mkdir -p ./' // trim(output))
 
-  mapfile  = 'sed_maps_v3.txt'
-  rmsfile  = 'sed_rms_v3.txt'
-  freqfile = 'sed_freqs_v3.txt'
-  bandfile = 'sed_bands_v3.txt'
+  mapfile  = 'sed_maps_v1.txt'
+  rmsfile  = 'sed_rms_v1.txt'
+  freqfile = 'sed_freqs_v1.txt'
+  bandfile = 'sed_bands_v1.txt'
   
   mapHI = trim(data) // 'HI_vel_filter_60arcmin_0064.fits'
 
