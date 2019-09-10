@@ -5,7 +5,7 @@ program dust_hi_fit
   use head_fits
   implicit none
 
-  integer(i4b)        :: i, j, l, m, n, niter, npix, nside, nlheader, nmaps, ordering, pix, times, bands
+  integer(i4b)        :: i, j, l, m, n, niter, npix, nside, nlheader, nmaps, ordering, pix, times, bands, output
   real(dp)            :: nullval, h, c, k, T, temp, fre, x, z, p, test, T_sum
   real(dp)            :: dust_T_init, dust_T_sigma, chisq, thresh
   real(dp)            :: missval = -1.6375d30
@@ -13,7 +13,7 @@ program dust_hi_fit
   logical(lgt)        :: double_precision  
 
   character(len=128)              :: mapHI, output, mapfile, rmsfile, freqfile, bandfile
-  character(len=128)              :: arg1, arg2, arg3, arg4, arg5, arg6
+  character(len=128)              :: arg1, arg2, arg3, arg4, arg5, arg6, arg7, test
   character(len=128)              :: chi_file, amp_dist, fitsname, filename, file1, file2
   character(len=80)               :: line, data, version 
   character(len=80), dimension(1) :: line2
@@ -21,8 +21,7 @@ program dust_hi_fit
 
   real(dp), allocatable, dimension(:,:)        :: HI, T_map
   real(dp), allocatable, dimension(:,:,:)      :: maps, model, rmss, cov
-  real(dp), allocatable, dimension(:)          :: amps, clamps, model_T, new_T
-  real(dp), allocatable, dimension(:)          :: y, freq, sum1, sum2, norm, s
+  real(dp), allocatable, dimension(:)          :: amps, clamps, model_T, new_T, y, freq, sum1, sum2, norm, s
   character(len=80),  dimension(180)           :: header
   character(len=100),allocatable, dimension(:) :: freqs, map, rms
 
@@ -40,11 +39,14 @@ program dust_hi_fit
 11 format (I2)
 12 format (I3)
 13 format (I4)
-  
+
+  test = '.false.'
+
   if (iargc() < 6) then
      write(*,*) 'Usage:'
      write(*,*) '   dust_hi_fit [temp estimate (full sky)] [std of temperature (for fitting)]'
      write(*,*) '               [# of iterations] [HI threshold] [# of bands] [version # (v10)]'
+     write(*,*) '               [test (.true./.false., default = .false.)] '
      write(*,*) ''
      stop
   end if
@@ -62,6 +64,11 @@ program dust_hi_fit
   call getarg(6,arg6)
   read(arg6,*) version
 
+  if (iargc() = 7) then
+      call getarg(7,arg7)
+      read(arg7,*) test
+  end if
+
   data  = '../dust_data/sed_data/'
   output= 'results/' // trim(version)// '/'
 
@@ -69,15 +76,16 @@ program dust_hi_fit
 
   call system('mkdir -p ./' // trim(output))
 
-  mapfile  = 'sed_maps_v3.txt'
-  rmsfile  = 'sed_rms_v3.txt'
-  freqfile = 'sed_freqs_v3.txt'
-  bandfile = 'sed_bands_v3.txt'
+  mapfile  = 'sed_maps_' // trim(version) // '.txt'
+  rmsfile  = 'sed_rms_'  // trim(version) // '.txt'
+  freqfile = 'sed_freqs_'// trim(version) // '.txt'
+  bandfile = 'sed_bands_'// trim(version) // '.txt'
   
   mapHI = trim(data) // 'HI_vel_filter_60arcmin_0064.fits'
 
   i     = getsize_fits(mapHI,nside=nside,ordering=ordering,nmaps=nmaps)
   npix  = nside2npix(nside)
+  pix   = 0
 
   allocate(maps(0:npix-1,nmaps,bands),model(0:npix-1,nmaps,bands),HI(0:npix-1,nmaps),model_T(0:npix-1))
   allocate(new_T(0:npix-1),T_map(0:npix-1,nmaps),map(bands),rms(bands))
@@ -113,7 +121,6 @@ program dust_hi_fit
      call read_bintab(map(i), maps(:,:,i), npix, nmaps, nullval, anynull, header=header)
      call read_bintab(rms(i), rmss(:,:,i), npix, nmaps, nullval, anynull, header=header)
   end do
-     
 
   ! Initialize header for writing maps
   nlheader = size(header)
@@ -141,9 +148,6 @@ program dust_hi_fit
      new_T(i) = dust_T_init
   end do
 
-  niter = 5000
-  pix  = 0
-
   ! Mask maps
   do j = 1, nmaps
     do i = 0, npix-1
@@ -170,8 +174,11 @@ program dust_hi_fit
   
   ! Initializing
   !--------------
-  sum1 = 0.d0
-  sum2 = 0.d0
+
+  output = 100    ! Determines how regularly maps are output
+  niter  = 5000   ! # of iterations in the metropolis-hastings portion
+  sum1   = 0.d0
+  sum2   = 0.d0
 
   write(*,*) 'Initial amplitudes: '
   write(*,*) '-------------------'
@@ -222,12 +229,10 @@ program dust_hi_fit
      ! Here is where all of the calculations happen
      ! --------------------------------------------------
 
-     model_T = create_T(new_T,npix)
+     model_T = sample_T(new_T,npix)
      new_T   = model_T
      amps    = sample_A(new_T,npix)
-
      clamps  = amps
-
      chisq   = compute_chisq(new_T,clamps)
 
      T_sum = 0.d0
@@ -308,7 +313,6 @@ contains
         planck  = ((2.d0*h*fre**3.d0)/(c**2.d0))*(1.d0/(exp((h*fre)/(k*T))-1))
   end function planck
 
-
   function rand_normal(mean,stdev) result(c)
        double precision :: mean,stdev,c,temp(2),theta,r
        if (stdev <= 0.0d0) then
@@ -321,8 +325,18 @@ contains
     end if
   end function
 
-
   function sample_A(T,npix)
+
+    !--------------------------------------------------------------------------------|
+    ! Here the amplitude is algebraically computed by minimizing the chi-sq.         |
+    ! The solution for the amplitude takes the form:                                 |
+    !                                                                                |
+    !                sum_{i=1}^{npix} (map*model)/(\sigma^2)                         |
+    !     a_{\nu} =  ---------------------------------------                         |
+    !                sum_{i=1}^{npix} (model^2)/(sigma^2)                            |
+    !                                                                                |
+    !--------------------------------------------------------------------------------|
+
     implicit none
 
     integer(i4b), intent(in)                  :: npix
@@ -355,16 +369,49 @@ contains
 
   end function sample_A
 
-  function create_T(T,npix)
+  function sample_T(T,npix)
+
+    !--------------------------------------------------------------------------------|
+    ! Here we use a metropolis-hastings algorithm to sample for potential dust       |
+    ! temperature values in each pixel by using a maximum likelihood method.         |
+    !                                                                                |
+    ! Likelihood_i = exp(-\chi_i^2)                                                  |
+    !                                                                                |
+    ! For iteration i, we:                                                           |
+    !                                                                                |
+    ! i)   Calculate the likelihood for iteration (i-1) by finding \chi_{i-1}^2.     |
+    !                                                                                |
+    ! ii)  Read an initial temperature estimate in pixel j by loading the value from |
+    !      iteration i-1. We then draw a new potential value for the temperature     |
+    !      where T_d(i-1) = \mu and the standard deviation is chosen to ensure a     |
+    !      reasonable acceptance probability, b.                                     |
+    !                                                                                |
+    ! iii) Calculate the \chi^2 for the new sampled T_d estimate.                    |
+    !                                                                                |
+    ! iv)  Calculate the difference in likelihoods:                                  |
+    !             val = exp(-(\chi_{i}^2-\chi_{i-1}^2))                              |
+    !                                                                                |
+    ! v)   Use the metropolis-hastings to accept or reject the sample by drawing     |
+    !      a random number from a uniform distribution between 0 and 1. If the       |
+    !      random number chosen is less than min(val,1), then the change is accepted.|
+    !                                                                                |
+    ! vi)  Reiterate.                                                                |
+    !                                                                                |
+    !--------------------------------------------------------------------------------|
+
     implicit none
 
     integer(i4b), intent(in)                     :: npix
     real(dp), dimension(0:npix-1), intent(in)    :: T
-    real(dp), dimension(0:npix-1)                :: create_T
-    ! real(dp), dimension(niter+1)                 :: chi, tump, accept, prob
+    real(dp), dimension(0:npix-1)                :: sample_T
     real(dp), dimension(bands)                   :: y,covs,test
     real(dp), dimension(2)                       :: a
-    real(dp)                                     :: x,temp,r,b,c,num!,naccept
+    real(dp)                                     :: x,temp,r,b,c,num
+    
+    if (test == '.true.') then
+      real(dp), dimension(niter+1)               :: chi, tump, accept, prob
+      real(dp)                                   :: naccept    
+    end if
 
     do i=0,npix-1
        if (abs((HI(i,1)-missval)/missval) < 1.d-8) then
@@ -381,11 +428,13 @@ contains
           a(1) = 1.d0
           c    = x
 
-          ! prob(1)   = 1.d0
-          ! chi(1)    = x
-          ! tump(1)   = temp
-          ! accept(1) = 0.d0
-          ! naccept   = 0
+          if (test == '.true.') then
+            prob(1)   = 1.d0
+            chi(1)    = x
+            tump(1)   = temp
+            accept(1) = 0.d0
+            naccept   = 0
+          end if
 
           do l=1,niter
              r    = rand_normal(temp,dust_T_sigma)
@@ -401,18 +450,21 @@ contains
 
              if (num < p) then
                 if (r .lt. 35 .and. r .gt. 10) then
-                   temp  = r
-                   c     = b
-                   ! naccept = naccept + 1
+                  temp  = r
+                  c     = b
+                    if (test == '.true.') then
+                      naccept = naccept + 1
+                    end if
                 end if
              end if
-
-             ! if (i == 600) then
-             !  prob(l+1)   = p 
-             !  chi(l+1)    = c
-             !  tump(l+1)   = temp
-             !  accept(l+1) = naccept/l
-             ! end if
+             if (test == '.true.') then
+               if (i == 600) then
+                prob(l+1)   = p 
+                chi(l+1)    = c
+                tump(l+1)   = temp
+                accept(l+1) = naccept/l
+               end if
+            
           end do
 
           ! if (i == 600) then
@@ -430,12 +482,15 @@ contains
           !   end do
 
           ! end if
-          create_T(i)  = temp
+          sample_T(i)  = temp
        endif
     end do
-  end function create_T
+  end function sample_T
 
   function compute_chisq(T,amp)
+
+    ! Pretty self explanatory
+
     implicit none
     real(dp), dimension(0:npix-1), intent(in) :: T
     real(dp), dimension(bands),    intent(in) :: amp
@@ -458,7 +513,9 @@ contains
   end function compute_chisq
 
   subroutine write_maps(npix,nmaps,header)
+    
     ! Outputs the temperature map, the modeled map, and the residual map
+
     implicit none
     integer(i4b), intent(in)                        :: npix, nmaps
     integer(i4b)                                    :: y, b
